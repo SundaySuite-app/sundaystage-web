@@ -16,6 +16,8 @@ export async function GET(
     seq: session.current_seq,
     frame: session.current_frame,
     status: session.status,
+    origin: session.origin,
+    title: session.title,
     setlist: session.setlist ?? null,
   });
 }
