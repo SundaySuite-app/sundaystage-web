@@ -5,7 +5,7 @@
  * If the caller is signed in to a Sunday account (shared .sundaysuite.app
  * SSO cookie), the session is tagged with their church for provenance.
  */
-import { ok, fail, readJson } from "@/lib/server/http";
+import { ok, readJson } from "@/lib/server/http";
 import { createSession } from "@/lib/server/sessions";
 import { resolveChurchId } from "@/lib/server/sso";
 
