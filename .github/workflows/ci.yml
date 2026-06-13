@@ -1,0 +1,27 @@
+# CI — every push/PR runs the same gate as local `npm run check`,
+# plus the Docker-Postgres database tests (scripts/test-db.sh).
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ubuntu-latest runners ship with Docker preinstalled; test-db.sh spins
+      # up a throwaway postgres:16 container and runs the migration + assertions.
+      - run: npm run test:db
