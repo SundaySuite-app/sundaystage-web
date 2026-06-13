@@ -46,3 +46,10 @@ export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for");
   return fwd?.split(",")[0]?.trim() || "local";
 }
+
+/** Extract a Bearer token from the Authorization header, or null. */
+export function bearer(req: Request): string | null {
+  const h = req.headers.get("authorization") ?? "";
+  const m = /^Bearer\s+(.+)$/i.exec(h.trim());
+  return m ? m[1].trim() : null;
+}
