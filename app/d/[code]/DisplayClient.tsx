@@ -66,8 +66,11 @@ export function DisplayClient({ code }: { code: string }) {
     );
   }
 
-  const waiting = join === "joining" || (state.frame === null && state.status === "live");
+  const waiting = state.frame === null && state.status === "live";
   const ended = state.status === "ended";
+  // Red badge whenever we're not getting live updates: "offline" before we ever
+  // joined (running on the cached slide), "reconnecting" after a drop.
+  const degraded = join === "offline" || (!connected && join === "ok");
 
   return (
     <div className={`display-root${cursorVisible ? " show-cursor" : ""}`}>
@@ -86,10 +89,10 @@ export function DisplayClient({ code }: { code: string }) {
       ) : (
         <SlideRenderer frame={state.frame} animateKey={state.seq} />
       )}
-      {!connected && join === "ok" && !ended ? (
+      {degraded && !ended ? (
         <div className="conn-badge">
           <span className="conn-dot off" />
-          {t("display.reconnecting")}
+          {join === "offline" ? t("display.offline") : t("display.reconnecting")}
         </div>
       ) : null}
     </div>

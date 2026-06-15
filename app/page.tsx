@@ -44,7 +44,7 @@ export default function LandingPage() {
     }
   }
 
-  async function join(mode: "d" | "f") {
+  async function join(mode: "d" | "f" | "s") {
     if (!isValidPin(code)) return;
     setBusy(true);
     const res = await fetch(`/api/sessions/by-code/${code}`);
@@ -87,6 +87,16 @@ export default function LandingPage() {
           </button>
           <button className="btn btn--lg" disabled={!isValidPin(code) || busy} onClick={() => void join("f")}>
             {t("landing.follow")}
+          </button>
+        </div>
+
+        <div style={{ marginTop: "0.8rem" }}>
+          <button
+            className="btn btn--ghost"
+            disabled={!isValidPin(code) || busy}
+            onClick={() => void join("s")}
+          >
+            {t("landing.scene")}
           </button>
         </div>
 

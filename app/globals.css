@@ -306,13 +306,10 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: var(--ink-900);
   border-radius: 12px;
-  padding: 0.7rem 0.8rem;
-  text-align: left;
-  cursor: pointer;
-  color: var(--ink-100);
-  font: inherit;
-  font-size: 0.82rem;
-  line-height: 1.35;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
   min-height: 5.6rem;
   transition: border-color 120ms ease, background 120ms ease;
 }
@@ -322,6 +319,19 @@ body {
   box-shadow: 0 0 0 3px var(--gold-dim);
   background: var(--ink-800);
 }
+.op-slide-main {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-100);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  padding: 0.15rem 0.25rem;
+  flex: 1;
+}
 .op-slide .lbl {
   display: block;
   font-size: 0.62rem;
@@ -329,6 +339,109 @@ body {
   text-transform: uppercase;
   color: var(--gold-500);
   margin-bottom: 0.35rem;
+}
+.op-slide-actions { display: flex; gap: 0.3rem; justify-content: flex-end; }
+.op-slide-edit { display: grid; gap: 0.4rem; }
+.op-edit-area {
+  width: 100%;
+  min-height: 5rem;
+  background: var(--ink-950);
+  color: var(--ink-100);
+  border: 1px solid var(--gold-500);
+  border-radius: 8px;
+  padding: 0.5rem;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  resize: vertical;
+  outline: none;
+}
+.op-mini {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--ink-800);
+  color: var(--ink-300);
+  border-radius: 8px;
+  width: 1.9rem;
+  height: 1.7rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: border-color 120ms ease, color 120ms ease;
+}
+.op-mini:hover { border-color: rgba(233, 200, 120, 0.45); color: var(--ink-100); }
+.op-mini:disabled { opacity: 0.35; cursor: default; }
+.op-mini2 { padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 10px; }
+
+/* Templates bar */
+.op-templates { display: flex; gap: 0.6rem; align-items: flex-start; margin-top: 0.7rem; flex-wrap: wrap; }
+.op-templates-list > summary { list-style: none; cursor: pointer; }
+.op-templates-list > summary::-webkit-details-marker { display: none; }
+.op-templates-menu {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.25rem;
+  background: var(--ink-900);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 0.5rem;
+  max-width: 24rem;
+}
+.op-template-row { display: flex; align-items: center; gap: 0.4rem; }
+.op-template-load {
+  flex: 1;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-100);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+}
+.op-template-load:hover { background: var(--ink-800); }
+
+/* QR overlay */
+.op-qr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 7, 11, 0.86);
+  backdrop-filter: blur(6px);
+  padding: 1.5rem;
+}
+.op-qr-card {
+  background: var(--ink-900);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 1.6rem;
+  display: grid;
+  justify-items: center;
+  gap: 0.7rem;
+  text-align: center;
+  width: min(22rem, 92vw);
+}
+.op-qr-img {
+  width: 15rem;
+  height: 15rem;
+  background-color: #fff;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 12px;
+}
+.op-qr-code {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+  font-weight: 700;
+  font-size: 1.6rem;
+  color: var(--gold-300);
 }
 .op-controls {
   position: fixed;
@@ -374,3 +487,94 @@ input.txt:focus { border-color: var(--gold-500); box-shadow: 0 0 0 3px var(--gol
 
 .muted { color: var(--ink-500); font-size: 0.85rem; }
 .error-text { color: var(--danger); font-size: 0.85rem; }
+
+/* ── Scene / confidence monitor (musicians) ──────────────────────────────── */
+.scene-root {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #000;
+  color: #fff;
+}
+.scene-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1.1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.scene-bar-right { display: flex; align-items: center; gap: 0.85rem; }
+.scene-clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 640;
+  font-size: 1.15rem;
+  color: var(--ink-300);
+}
+.scene-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--ink-300);
+}
+.scene-now {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  padding: 1.5rem 1.4rem;
+}
+.scene-label {
+  font-size: clamp(0.7rem, 2.4vmin, 1.1rem);
+  font-weight: 620;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-300);
+  margin-bottom: 1rem;
+}
+.scene-now-text {
+  font-weight: 720;
+  line-height: 1.16;
+  text-wrap: balance;
+  font-size: clamp(2rem, 7.6vmin, 5rem);
+  max-width: 94%;
+}
+.scene-ref {
+  margin-top: 1rem;
+  font-style: italic;
+  opacity: 0.7;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(0.9rem, 2.6vmin, 1.4rem);
+}
+.scene-next {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.85rem 1.4rem calc(1rem + env(safe-area-inset-bottom));
+  min-height: 22vh;
+  display: grid;
+  align-content: center;
+}
+.scene-next-head {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-500);
+  margin-bottom: 0.5rem;
+}
+.scene-next-label {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold-500);
+  margin-bottom: 0.3rem;
+}
+.scene-next-text {
+  font-weight: 560;
+  line-height: 1.28;
+  color: var(--ink-100);
+  font-size: clamp(1.1rem, 3.4vmin, 2rem);
+  opacity: 0.94;
+}
+.scene-next-empty { color: var(--ink-500); font-size: 0.95rem; }

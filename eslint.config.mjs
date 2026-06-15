@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // Generated deploy artifacts — never lint these.
     ".open-next/**",
     ".wrangler/**",
+    // Hand-rolled service worker (service-worker globals, not an app module).
+    "public/sw.js",
   ]),
 ]);
 
