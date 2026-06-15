@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { pasteToSlides, type SlideDef } from "@/lib/sections";
+import { pasteToSlides, sectionsToSlides, type SlideDef } from "@/lib/sections";
 import { moveSlide, removeSlideAt, updateSlideAt, reindexCurrent } from "@/lib/setlist";
 import {
   loadTemplates,
@@ -26,8 +26,10 @@ import {
 import { WEBFRAME_VERSION, type WebFrame } from "@/lib/webframe";
 import { usePresence } from "@/lib/client/usePresence";
 import { SlideRenderer } from "@/components/SlideRenderer";
+import { LibraryPicker } from "@/components/LibraryPicker";
 import { t } from "@/lib/locale/i18n";
 import type { RemoteCommand } from "@/lib/realtime";
+import type { LibrarySong } from "@/lib/client/useLibrary";
 
 interface Stored {
   secret: string;
@@ -232,6 +234,19 @@ export function OperatorClient({ id }: { id: string }) {
     setPaste("");
     saveSetlist(next, current);
     // The live slide may have gained a "next" — refresh the scene monitor.
+    if (current >= 0 && overlay === "none") void postFrame(frameForSlide(current, next));
+  }
+
+  // Append a song chosen from the church library, through the SAME slide flow as
+  // paste (sectionsToSlides keeps the slide shape identical).
+  function addSongToSetlist(song: LibrarySong) {
+    const parsed = sectionsToSlides(
+      song.sections.map((s) => ({ label: s.label ?? null, lines: s.lines })),
+    );
+    if (parsed.length === 0) return;
+    const next = [...slides, ...parsed];
+    setSlides(next);
+    saveSetlist(next, current);
     if (current >= 0 && overlay === "none") void postFrame(frameForSlide(current, next));
   }
 
@@ -447,6 +462,7 @@ export function OperatorClient({ id }: { id: string }) {
                   </div>
                 </details>
               ) : null}
+              <LibraryPicker onPick={addSongToSetlist} />
             </div>
           </div>
 
