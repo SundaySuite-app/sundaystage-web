@@ -19,12 +19,15 @@ echo "→ prelude (Supabase shims)"
 run supabase/tests/_prelude.sql
 MIG=supabase/migrations/20260613040000_stage_schema.sql
 TRMIG=supabase/migrations/20260613120000_translation_cache.sql
+LIBMIG=supabase/migrations/20260615120000_library.sql
 echo "→ migration (1st apply)"
 run "$MIG"
 run "$TRMIG"
+run "$LIBMIG"
 echo "→ migration (2nd apply — idempotency)"
 run "$MIG"
 run "$TRMIG"
+run "$LIBMIG"
 
 echo "→ stage-logic assertions"
 docker cp supabase/tests/stage_logic_test.sql "$NAME:/tmp/t.sql" >/dev/null
@@ -37,4 +40,10 @@ docker cp supabase/tests/translation_test.sql "$NAME:/tmp/tr.sql" >/dev/null
 OUT=$(docker exec "$NAME" psql -U postgres -v ON_ERROR_STOP=1 -f /tmp/tr.sql 2>&1) || true
 echo "$OUT" | grep -E "PASS|FAIL" || true
 echo "$OUT" | grep -q "ALL TRANSLATION TESTS PASSED" || { echo "TESTS FAILED"; echo "$OUT" | tail -25; exit 1; }
+
+echo "→ library assertions"
+docker cp supabase/tests/library_test.sql "$NAME:/tmp/lib.sql" >/dev/null
+OUT=$(docker exec "$NAME" psql -U postgres -v ON_ERROR_STOP=1 -f /tmp/lib.sql 2>&1) || true
+echo "$OUT" | grep -E "PASS|FAIL" || true
+echo "$OUT" | grep -q "ALL LIBRARY TESTS PASSED" || { echo "TESTS FAILED"; echo "$OUT" | tail -25; exit 1; }
 echo "✓ all database checks passed"
