@@ -30,6 +30,10 @@ export const WebFrame = z.object({
   kind: z.enum(["slide", "black", "logo", "message", "ended"]),
   text_lines: z.array(z.string().max(500)).max(40).optional(),
   translation_lines: z.array(z.string().max(500)).max(40).nullish(),
+  // Scene/confidence monitor (musicians): the NEXT slide's content. Optional
+  // and additive — old displays ignore it and `v` stays 1 (forward-compatible).
+  next_lines: z.array(z.string().max(500)).max(40).optional(),
+  next_label: z.string().max(80).nullish(),
   section_label: z.string().max(80).nullish(),
   reference: z.string().max(120).nullish(),
   message: z.string().max(2000).optional(),
@@ -68,7 +72,12 @@ export interface SlideContent {
  */
 export function fromLiveFrame(
   frame: LiveFrame,
-  opts: { forceGate?: boolean; appearance?: Appearance | null } = {},
+  opts: {
+    forceGate?: boolean;
+    appearance?: Appearance | null;
+    /** The next slide's content, for the scene/confidence monitor. */
+    next?: { lines: string[]; label?: string | null } | null;
+  } = {},
 ): WebFrame {
   const appearance = opts.appearance ?? undefined;
   const sensitive =
@@ -86,6 +95,8 @@ export function fromLiveFrame(
         kind: "slide",
         text_lines: frame.slide_content.text_lines,
         translation_lines: frame.slide_content.translation_lines ?? undefined,
+        next_lines: opts.next?.lines,
+        next_label: opts.next?.label ?? undefined,
         section_label: frame.slide_content.section_label ?? undefined,
         reference: frame.slide_content.reference ?? undefined,
         appearance,

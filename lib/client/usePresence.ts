@@ -6,7 +6,7 @@ import { channels } from "@/lib/realtime";
 
 export interface PresenceViewer {
   viewerId: string;
-  role: "display" | "follow" | "operator";
+  role: "display" | "follow" | "operator" | "scene";
 }
 
 /**

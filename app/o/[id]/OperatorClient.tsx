@@ -1,17 +1,28 @@
 "use client";
 
 /**
- * The light operator console. Two jobs:
+ * The operator console. Two jobs:
  *  - WEB sessions: paste lyrics → slides, tap to show, next/prev/black/logo —
  *    every action computes a WebFrame client-side and POSTs the shared /frame
- *    endpoint (same write path as the desktop forwarder).
+ *    endpoint (same write path as the desktop forwarder). Slides can be edited,
+ *    reordered and deleted; a setlist can be saved as a reusable template.
  *  - DESKTOP sessions: the slide grid is hidden; the transport buttons become
  *    a REMOTE CONTROL that broadcasts commands the desktop app acts on.
- * The session secret lives in localStorage from /new (or via the desktop
- * deep link `/o/<id>#s=<secret>` which we persist and scrub from the URL).
+ * Keyboard: Space/→ next, ← prev, B black, L logo (ignored while typing).
+ * The session secret lives in localStorage from /new (or via the desktop deep
+ * link `/o/<id>#s=<secret>` which we persist and scrub from the URL).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { pasteToSlides, type SlideDef } from "@/lib/sections";
+import { moveSlide, removeSlideAt, updateSlideAt, reindexCurrent } from "@/lib/setlist";
+import {
+  loadTemplates,
+  saveTemplates,
+  upsertTemplate,
+  removeTemplate,
+  type Template,
+} from "@/lib/templates";
 import { WEBFRAME_VERSION, type WebFrame } from "@/lib/webframe";
 import { usePresence } from "@/lib/client/usePresence";
 import { SlideRenderer } from "@/components/SlideRenderer";
@@ -35,10 +46,16 @@ export function OperatorClient({ id }: { id: string }) {
   const [lost, setLost] = useState(false);
   const [cmdSeq, setCmdSeq] = useState(0);
   const [viewerId] = useState(() => `o-${Math.random().toString(36).slice(2)}`);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [qr, setQr] = useState("");
+  const [showQr, setShowQr] = useState(false);
 
   const viewers = usePresence(id, { viewerId, role: "operator" });
   const displayCount = viewers.filter((v) => v.role === "display").length;
   const followCount = viewers.filter((v) => v.role === "follow").length;
+  const sceneCount = viewers.filter((v) => v.role === "scene").length;
 
   // Resolve the secret: localStorage, or the desktop deep-link fragment.
   // (Async tick so hydration finishes before state moves — keeps the React
@@ -87,10 +104,45 @@ export function OperatorClient({ id }: { id: string }) {
     })();
   }, [id]);
 
+  // Load saved templates from this device.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (!cancelled) setTemplates(loadTemplates());
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const auth = useMemo(
     () => ({ "Content-Type": "application/json", Authorization: `Bearer ${stored?.secret ?? ""}` }),
     [stored?.secret],
   );
+
+  const host = typeof window !== "undefined" ? window.location.host : "stage.sundaysuite.app";
+
+  // Build a QR for the display join URL so the room can scan instead of type.
+  useEffect(() => {
+    const code = stored?.code;
+    if (!code) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const dataUrl = await QRCode.toDataURL(`https://${host}/d/${code}`, {
+          margin: 1,
+          width: 360,
+        });
+        if (!cancelled) setQr(dataUrl);
+      } catch {
+        // QR is a nicety — ignore failures
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [stored?.code, host]);
 
   const postFrame = useCallback(
     async (frame: WebFrame) => {
@@ -128,18 +180,25 @@ export function OperatorClient({ id }: { id: string }) {
     [auth, id],
   );
 
-  const frameForSlide = (s: SlideDef): WebFrame => ({
-    v: WEBFRAME_VERSION,
-    kind: "slide",
-    text_lines: s.lines,
-    section_label: s.label ?? undefined,
-  });
+  const frameForSlide = (index: number, arr: SlideDef[] = slides): WebFrame => {
+    const s = arr[index];
+    const next = arr[index + 1];
+    return {
+      v: WEBFRAME_VERSION,
+      kind: "slide",
+      text_lines: s.lines,
+      section_label: s.label ?? undefined,
+      // Power the scene/confidence monitor with the upcoming slide.
+      next_lines: next?.lines,
+      next_label: next?.label ?? undefined,
+    };
+  };
 
   function showSlide(index: number) {
     if (index < 0 || index >= slides.length) return;
     setCurrent(index);
     setOverlay("none");
-    void postFrame(frameForSlide(slides[index]));
+    void postFrame(frameForSlide(index));
     saveSetlist(slides, index);
   }
 
@@ -158,7 +217,7 @@ export function OperatorClient({ id }: { id: string }) {
     }
     if (overlay === kind) {
       setOverlay("none");
-      if (current >= 0) void postFrame(frameForSlide(slides[current]));
+      if (current >= 0) void postFrame(frameForSlide(current));
       return;
     }
     setOverlay(kind);
@@ -172,6 +231,89 @@ export function OperatorClient({ id }: { id: string }) {
     setSlides(next);
     setPaste("");
     saveSetlist(next, current);
+    // The live slide may have gained a "next" — refresh the scene monitor.
+    if (current >= 0 && overlay === "none") void postFrame(frameForSlide(current, next));
+  }
+
+  // ── Slide editing / reordering ────────────────────────────────────────────
+
+  function startEdit(i: number) {
+    setEditing(i);
+    setEditText(slides[i].lines.join("\n"));
+  }
+
+  function saveEdit(i: number) {
+    const lines = editText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    if (lines.length === 0) {
+      setEditing(null);
+      return;
+    }
+    const next = updateSlideAt(slides, i, { lines });
+    setSlides(next);
+    setEditing(null);
+    saveSetlist(next, current);
+    if (i === current && overlay === "none") void postFrame(frameForSlide(i, next));
+  }
+
+  function doMove(from: number, to: number) {
+    const next = moveSlide(slides, from, to);
+    if (next === slides) return;
+    const nextCurrent = reindexCurrent(current, { type: "move", from, to }, slides.length);
+    setSlides(next);
+    setCurrent(nextCurrent);
+    saveSetlist(next, nextCurrent);
+    if (nextCurrent >= 0 && overlay === "none") void postFrame(frameForSlide(nextCurrent, next));
+  }
+
+  function doRemove(i: number) {
+    const next = removeSlideAt(slides, i);
+    if (next === slides) return;
+    const wasShowingRemoved = i === current && overlay === "none";
+    const nextCurrent = reindexCurrent(current, { type: "remove", index: i }, slides.length);
+    setSlides(next);
+    setCurrent(nextCurrent);
+    if (editing === i) setEditing(null);
+    saveSetlist(next, nextCurrent);
+    // Refresh the live slide's next-preview, but don't yank the projector onto a
+    // different slide just because an earlier one was deleted.
+    if (!wasShowingRemoved && nextCurrent >= 0 && overlay === "none") {
+      void postFrame(frameForSlide(nextCurrent, next));
+    }
+  }
+
+  function clearAll() {
+    setSlides([]);
+    setCurrent(-1);
+    setEditing(null);
+    saveSetlist([], -1);
+  }
+
+  // ── Templates (per-device, localStorage) ──────────────────────────────────
+
+  function saveAsTemplate() {
+    if (slides.length === 0) return;
+    const name = window.prompt(t("op.templateNamePrompt"))?.trim();
+    if (!name) return;
+    const next = upsertTemplate(templates, { name, slides, savedAt: Date.now() });
+    setTemplates(next);
+    if (!saveTemplates(next)) window.alert(t("op.templateQuota"));
+  }
+
+  function loadTemplate(tp: Template) {
+    setSlides(tp.slides);
+    setCurrent(-1);
+    setOverlay("none");
+    setEditing(null);
+    saveSetlist(tp.slides, -1);
+  }
+
+  function deleteTemplate(name: string) {
+    const next = removeTemplate(templates, name);
+    setTemplates(next);
+    saveTemplates(next);
   }
 
   async function endSession() {
@@ -180,8 +322,35 @@ export function OperatorClient({ id }: { id: string }) {
     setLost(true);
   }
 
-  const host =
-    typeof window !== "undefined" ? window.location.host : "stage.sundaysuite.app";
+  // ── Keyboard transport (Space/arrows/B/L), ignored while typing ───────────
+  // A ref kept current every render delegates from one stable listener, so the
+  // hotkeys always see the latest state without re-subscribing.
+  const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  useEffect(() => {
+    onKeyRef.current = (e: KeyboardEvent) => {
+      if (lost) return;
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      if (e.key === " " || e.key === "ArrowRight" || e.key === "PageDown") {
+        e.preventDefault();
+        step(1);
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault();
+        step(-1);
+      } else if (e.key === "b" || e.key === "B") {
+        e.preventDefault();
+        toggleOverlay("black");
+      } else if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        toggleOverlay("logo");
+      }
+    };
+  });
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => onKeyRef.current(e);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   if (lost) {
     return (
@@ -204,11 +373,24 @@ export function OperatorClient({ id }: { id: string }) {
             {t("op.shareHint", { host })}
           </div>
           <div className="op-code">{stored?.code ?? "······"}</div>
+          <button
+            className="btn btn--ghost op-mini2"
+            style={{ marginTop: "0.3rem" }}
+            disabled={!stored?.code}
+            onClick={() => setShowQr(true)}
+          >
+            {t("op.qr")}
+          </button>
         </div>
         <div className="op-meta">
-          {t("op.displays", { n: displayCount })} · {t("op.followers", { n: followCount })}
+          {t("op.displays", { n: displayCount })} · {t("op.followers", { n: followCount })} ·{" "}
+          {t("op.musicians", { n: sceneCount })}
           {mode === "desktop" ? <> · {t("op.remote")}</> : null}
-          <button className="btn btn--ghost" style={{ marginLeft: "0.8rem" }} onClick={() => void endSession()}>
+          <button
+            className="btn btn--ghost"
+            style={{ marginLeft: "0.8rem" }}
+            onClick={() => void endSession()}
+          >
             {t("op.end")}
           </button>
         </div>
@@ -223,53 +405,149 @@ export function OperatorClient({ id }: { id: string }) {
               value={paste}
               onChange={(e) => setPaste(e.target.value)}
             />
-            <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.6rem" }}>
+            <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
               <button className="btn btn--gold" disabled={!paste.trim()} onClick={addSlides}>
                 {t("op.addSlides")}
               </button>
               {slides.length > 0 ? (
-                <button
-                  className="btn btn--ghost"
-                  onClick={() => {
-                    setSlides([]);
-                    setCurrent(-1);
-                    saveSetlist([], -1);
-                  }}
-                >
+                <button className="btn btn--ghost" onClick={clearAll}>
                   {t("op.clear")}
                 </button>
+              ) : null}
+            </div>
+
+            <div className="op-templates">
+              <button
+                className="btn btn--ghost op-mini2"
+                disabled={slides.length === 0}
+                onClick={saveAsTemplate}
+              >
+                {t("op.saveTemplate")}
+              </button>
+              {templates.length > 0 ? (
+                <details className="op-templates-list">
+                  <summary className="btn btn--ghost op-mini2">
+                    {t("op.templates", { n: templates.length })}
+                  </summary>
+                  <div className="op-templates-menu">
+                    {templates.map((tp) => (
+                      <div key={tp.name} className="op-template-row">
+                        <button className="op-template-load" onClick={() => loadTemplate(tp)}>
+                          {tp.name}
+                        </button>
+                        <button
+                          className="op-mini"
+                          title={t("op.delete")}
+                          onClick={() => deleteTemplate(tp.name)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </details>
               ) : null}
             </div>
           </div>
 
           {slides.length === 0 ? (
-            <p className="muted" style={{ padding: "1.4rem 0" }}>{t("op.empty")}</p>
+            <p className="muted" style={{ padding: "1.4rem 0" }}>
+              {t("op.empty")}
+            </p>
           ) : (
             <div className="op-grid">
               {slides.map((s, i) => (
-                <button
+                <div
                   key={i}
                   className={`op-slide${i === current && overlay === "none" ? " active" : ""}`}
-                  onClick={() => showSlide(i)}
                 >
-                  {s.label ? <span className="lbl">{s.label}</span> : null}
-                  {s.lines.slice(0, 4).map((l, j) => (
-                    <span key={j} style={{ display: "block" }}>{l}</span>
-                  ))}
-                </button>
+                  {editing === i ? (
+                    <div className="op-slide-edit">
+                      <textarea
+                        className="op-edit-area"
+                        value={editText}
+                        autoFocus
+                        onChange={(e) => setEditText(e.target.value)}
+                      />
+                      <div className="op-slide-actions">
+                        <button className="btn btn--gold op-mini2" onClick={() => saveEdit(i)}>
+                          {t("op.save")}
+                        </button>
+                        <button
+                          className="btn btn--ghost op-mini2"
+                          onClick={() => setEditing(null)}
+                        >
+                          {t("op.cancel")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <button className="op-slide-main" onClick={() => showSlide(i)}>
+                        {s.label ? <span className="lbl">{s.label}</span> : null}
+                        {s.lines.slice(0, 4).map((l, j) => (
+                          <span key={j} style={{ display: "block" }}>
+                            {l}
+                          </span>
+                        ))}
+                      </button>
+                      <div className="op-slide-actions">
+                        <button
+                          className="op-mini"
+                          title={t("op.moveUp")}
+                          disabled={i === 0}
+                          onClick={() => doMove(i, i - 1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          className="op-mini"
+                          title={t("op.moveDown")}
+                          disabled={i === slides.length - 1}
+                          onClick={() => doMove(i, i + 1)}
+                        >
+                          ↓
+                        </button>
+                        <button className="op-mini" title={t("op.edit")} onClick={() => startEdit(i)}>
+                          ✎
+                        </button>
+                        <button
+                          className="op-mini"
+                          title={t("op.delete")}
+                          onClick={() => doRemove(i)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               ))}
             </div>
           )}
 
           {current >= 0 && overlay === "none" ? (
-            <div style={{ position: "fixed", right: "1rem", bottom: "5.6rem", width: "13rem", aspectRatio: "16/9", borderRadius: "10px", overflow: "hidden", border: "1px solid rgba(255,255,255,0.14)" }}>
-              <SlideRenderer frame={frameForSlide(slides[current])} animateKey={current} />
+            <div
+              style={{
+                position: "fixed",
+                right: "1rem",
+                bottom: "5.6rem",
+                width: "13rem",
+                aspectRatio: "16/9",
+                borderRadius: "10px",
+                overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.14)",
+              }}
+            >
+              <SlideRenderer frame={frameForSlide(current)} animateKey={current} />
             </div>
           ) : null}
         </div>
       ) : (
         <div style={{ display: "grid", placeItems: "center" }}>
-          <p className="muted" style={{ maxWidth: "26rem", textAlign: "center" }}>{t("op.remote")}</p>
+          <p className="muted" style={{ maxWidth: "26rem", textAlign: "center" }}>
+            {t("op.remote")}
+          </p>
         </div>
       )}
 
@@ -277,13 +555,17 @@ export function OperatorClient({ id }: { id: string }) {
         <button className="btn" onClick={() => toggleOverlay("black")}>
           {t("op.black")}
         </button>
-        <button className="btn btn--lg" onClick={() => step(-1)} disabled={mode === "web" && current <= 0}>
+        <button
+          className="btn btn--lg"
+          onClick={() => step(-1)}
+          disabled={mode === "web" && current <= 0}
+        >
           ← {t("op.prev")}
         </button>
         <button
           className="btn btn--gold btn--lg op-next"
           onClick={() => step(1)}
-          disabled={mode === "web" && current >= slides.length - 1 && current !== -1 && slides.length === 0}
+          disabled={mode === "web" && current >= slides.length - 1}
         >
           {t("op.next")} →
         </button>
@@ -291,6 +573,31 @@ export function OperatorClient({ id }: { id: string }) {
           {t("op.logo")}
         </button>
       </div>
+
+      {showQr ? (
+        <div className="op-qr-overlay" onClick={() => setShowQr(false)}>
+          <div className="op-qr-card" onClick={(e) => e.stopPropagation()}>
+            <div className="eyebrow">{t("op.qrTitle")}</div>
+            {qr ? (
+              <div
+                className="op-qr-img"
+                role="img"
+                aria-label="QR"
+                style={{ backgroundImage: `url(${qr})` }}
+              />
+            ) : (
+              <p className="muted">…</p>
+            )}
+            <div className="op-qr-code">{stored?.code}</div>
+            <div className="muted">
+              {host}/d/{stored?.code}
+            </div>
+            <button className="btn btn--ghost" onClick={() => setShowQr(false)}>
+              {t("op.qrClose")}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

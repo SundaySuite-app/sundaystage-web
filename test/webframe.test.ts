@@ -85,4 +85,37 @@ describe("fromLiveFrame (port of the desktop publisher's gating table)", () => {
       WebFrame.safeParse({ v: 1, kind: "slide", text_lines: Array(100).fill("x") }).success,
     ).toBe(false);
   });
+
+  it("threads next_* into a slide when provided (scene monitor seam)", () => {
+    const f = fromLiveFrame(slide(), { next: { lines: ["neste linje"], label: "Refreng" } });
+    expect(f.next_lines).toEqual(["neste linje"]);
+    expect(f.next_label).toBe("Refreng");
+  });
+});
+
+describe("WebFrame next_* scene fields (additive, no version bump)", () => {
+  it("keeps optional next_lines/next_label through safeParse", () => {
+    const parsed = WebFrame.safeParse({
+      v: 1,
+      kind: "slide",
+      text_lines: ["nå"],
+      next_lines: ["neste linje", "og en til"],
+      next_label: "Refreng",
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.next_lines).toEqual(["neste linje", "og en til"]);
+      expect(parsed.data.next_label).toBe("Refreng");
+    }
+  });
+
+  it("a frame without next_* is still valid (backward compatible)", () => {
+    const parsed = WebFrame.safeParse({ v: 1, kind: "slide", text_lines: ["nå"] });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.next_lines).toBeUndefined();
+  });
+
+  it("still rejects a bumped version even with next_*", () => {
+    expect(WebFrame.safeParse({ v: 2, kind: "slide", next_lines: ["x"] }).success).toBe(false);
+  });
 });
