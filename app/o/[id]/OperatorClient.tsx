@@ -53,6 +53,8 @@ export function OperatorClient({ id }: { id: string }) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [qr, setQr] = useState("");
   const [showQr, setShowQr] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const viewers = usePresence(id, { viewerId, role: "operator" });
   const displayCount = viewers.filter((v) => v.role === "display").length;
@@ -337,6 +339,28 @@ export function OperatorClient({ id }: { id: string }) {
     setLost(true);
   }
 
+  // Briefly surface a confirmation message (e.g. after copying the PIN).
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1800);
+  }, []);
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+  }, []);
+
+  async function copyPin() {
+    const code = stored?.code;
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      showToast(t("op.pinCopied"));
+    } catch {
+      // Clipboard blocked (insecure context / permission) — no-op, the code is
+      // still shown on screen for manual entry.
+    }
+  }
+
   // ── Keyboard transport (Space/arrows/B/L), ignored while typing ───────────
   // A ref kept current every render delegates from one stable listener, so the
   // hotkeys always see the latest state without re-subscribing.
@@ -388,14 +412,29 @@ export function OperatorClient({ id }: { id: string }) {
             {t("op.shareHint", { host })}
           </div>
           <div className="op-code">{stored?.code ?? "······"}</div>
-          <button
-            className="btn btn--ghost op-mini2"
-            style={{ marginTop: "0.3rem" }}
-            disabled={!stored?.code}
-            onClick={() => setShowQr(true)}
+          <div
+            style={{
+              display: "flex",
+              gap: "0.4rem",
+              justifyContent: "center",
+              marginTop: "0.3rem",
+            }}
           >
-            {t("op.qr")}
-          </button>
+            <button
+              className="btn btn--ghost op-mini2"
+              disabled={!stored?.code}
+              onClick={() => void copyPin()}
+            >
+              {t("op.copyPin")}
+            </button>
+            <button
+              className="btn btn--ghost op-mini2"
+              disabled={!stored?.code}
+              onClick={() => setShowQr(true)}
+            >
+              {t("op.qr")}
+            </button>
+          </div>
         </div>
         <div className="op-meta">
           {t("op.displays", { n: displayCount })} · {t("op.followers", { n: followCount })} ·{" "}
@@ -612,6 +651,12 @@ export function OperatorClient({ id }: { id: string }) {
               {t("op.qrClose")}
             </button>
           </div>
+        </div>
+      ) : null}
+
+      {toast ? (
+        <div className="op-toast" role="status" aria-live="polite">
+          {toast}
         </div>
       ) : null}
     </div>

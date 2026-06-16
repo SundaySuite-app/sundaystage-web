@@ -20,14 +20,61 @@ import type { WebFrame } from "@/lib/webframe";
 
 type TranslateResult = { text_lines: string[]; section_label: string | null };
 
+// Per-device memory of the follower's chosen language, so the next service
+// restores it instead of re-detecting the browser locale.
+const LANG_KEY = "stage-follow-lang";
+
+function loadLang(): (Locale | "off") | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LANG_KEY);
+    if (raw === "off") return "off";
+    if (raw && (LOCALES as readonly string[]).includes(raw)) return raw as Locale;
+  } catch {
+    // private mode / disabled storage — fall back to detection
+  }
+  return null;
+}
+
+function saveLang(v: Locale | "off"): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(LANG_KEY, v);
+  } catch {
+    // best-effort
+  }
+}
+
 export function FollowClient({ code }: { code: string }) {
   const { join, session, state, connected } = useSessionState(code);
   const [viewerId] = useState(() => `f-${Math.random().toString(36).slice(2)}`);
   usePresence(session?.id ?? null, { viewerId, role: "follow" });
 
-  // The follower's chosen language. Defaults to the browser locale; "off" means
-  // the explicit original-language view.
-  const [lang, setLang] = useState<Locale | "off">(() => detectLocale());
+  // The follower's chosen language. Restores a previous choice from this device,
+  // else defaults to the browser locale; "off" means the explicit
+  // original-language view.
+  const [lang, setLangState] = useState<Locale | "off">(() => loadLang() ?? detectLocale());
+
+  // Persist the choice and keep <html lang> in sync (LangSync listens).
+  const setLang = (v: Locale | "off") => {
+    setLangState(v);
+    saveLang(v);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("stage:locale", { detail: v === "off" ? detectLocale() : v }),
+      );
+    }
+  };
+
+  // On mount, reflect the restored/detected language into <html lang> too.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent("stage:locale", { detail: lang === "off" ? detectLocale() : lang }),
+    );
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [translation, setTranslation] = useState<TranslateResult | null>(null);
   const [translating, setTranslating] = useState(false);
   const [aiOff, setAiOff] = useState(false);
@@ -190,7 +237,7 @@ function SlideBody({
       {sectionLabel ? (
         <div className="eyebrow" style={{ marginBottom: "0.8rem" }}>{sectionLabel}</div>
       ) : null}
-      <div className="follow-text">
+      <div className="follow-text" aria-live="polite">
         {frame.kind === "message"
           ? frame.message
           : (frame.text_lines ?? []).map((line, i) => (

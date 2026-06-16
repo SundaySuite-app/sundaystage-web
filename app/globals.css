@@ -77,10 +77,32 @@ body {
   font: inherit;
   font-weight: 560;
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease, transform 80ms ease;
 }
 .btn:hover { border-color: rgba(233, 200, 120, 0.45); }
 .btn:active { transform: translateY(1px); }
+
+/* Motion-only flourishes: skip transitions for reduced-motion users. */
+@media (prefers-reduced-motion: no-preference) {
+  .btn { transition: border-color 140ms ease, background 140ms ease, transform 80ms ease; }
+  .op-slide { transition: border-color 120ms ease, background 120ms ease; }
+  .op-mini { transition: border-color 120ms ease, color 120ms ease; }
+  .pin input { transition: border-color 120ms ease, box-shadow 120ms ease; }
+}
+
+/* Keyboard focus rings on every interactive surface (chrome). */
+.btn:focus-visible,
+.op-mini:focus-visible,
+.op-slide-main:focus-visible,
+.op-template-load:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: none;
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px var(--gold-dim), 0 0 0 1px var(--gold-500);
+}
+.btn--gold:focus-visible {
+  box-shadow: 0 0 0 3px rgba(212, 167, 58, 0.35), 0 0 0 1px var(--ink-deep);
+}
 .btn--gold {
   background: linear-gradient(160deg, var(--gold-300), var(--gold-500));
   border-color: transparent;
@@ -129,7 +151,8 @@ body {
   line-height: 1.04;
   margin: 0.4rem 0 0;
 }
-.landing h1 em { font-style: italic; color: var(--gold-300); }
+.landing h1 em,
+.landing h1 .accent { font-style: italic; color: var(--gold-300); }
 .landing .sub { color: var(--ink-300); margin: 0.9rem 0 2.2rem; line-height: 1.55; }
 .hr-faint {
   border: 0;
@@ -311,7 +334,6 @@ body {
   flex-direction: column;
   gap: 0.4rem;
   min-height: 5.6rem;
-  transition: border-color 120ms ease, background 120ms ease;
 }
 .op-slide:hover { border-color: rgba(233, 200, 120, 0.4); }
 .op-slide.active {
@@ -362,14 +384,14 @@ body {
   background: var(--ink-800);
   color: var(--ink-300);
   border-radius: 8px;
-  width: 1.9rem;
-  height: 1.7rem;
+  /* >= 44px touch target (WCAG 2.5.5) while the glyph stays compact. */
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   font: inherit;
   font-size: 0.85rem;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: border-color 120ms ease, color 120ms ease;
 }
 .op-mini:hover { border-color: rgba(233, 200, 120, 0.45); color: var(--ink-100); }
 .op-mini:disabled { opacity: 0.35; cursor: default; }
@@ -443,6 +465,30 @@ body {
   font-size: 1.6rem;
   color: var(--gold-300);
 }
+/* Transient confirmation toast (e.g. PIN copied). */
+.op-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(5.4rem + env(safe-area-inset-bottom));
+  z-index: 60;
+  background: var(--ink-800);
+  border: 1px solid rgba(233, 200, 120, 0.4);
+  color: var(--ink-100);
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 560;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .op-toast { animation: toastrise 200ms ease; }
+  @keyframes toastrise {
+    from { opacity: 0; transform: translate(-50%, 6px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+}
+
 .op-controls {
   position: fixed;
   bottom: 0;
@@ -553,6 +599,11 @@ input.txt:focus { border-color: var(--gold-500); box-shadow: 0 0 0 3px var(--gol
   min-height: 22vh;
   display: grid;
   align-content: center;
+}
+/* When there's nothing queued, give the current lyrics the room instead. */
+.scene-next--empty {
+  min-height: auto;
+  max-height: 14vh;
 }
 .scene-next-head {
   font-size: 0.7rem;

@@ -9,7 +9,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { isValidPin } from "@/lib/codes";
-import { t } from "@/lib/locale/i18n";
+import { splitAccent, t } from "@/lib/locale/i18n";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -60,7 +60,17 @@ export default function LandingPage() {
     <main className="landing grain">
       <div className="landing-card reveal">
         <div className="eyebrow">{t("landing.eyebrow")}</div>
-        <h1 dangerouslySetInnerHTML={{ __html: t("landing.title") }} />
+        <h1>
+          {splitAccent(t("landing.title")).map((seg, i) =>
+            seg.em ? (
+              <span key={i} className="accent">
+                {seg.text}
+              </span>
+            ) : (
+              <span key={i}>{seg.text}</span>
+            ),
+          )}
+        </h1>
         <p className="sub">{t("landing.sub")}</p>
 
         <div className="pin" onPaste={onPaste}>

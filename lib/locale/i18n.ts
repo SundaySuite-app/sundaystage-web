@@ -73,6 +73,10 @@ const no: Catalog = {
   "op.libSignIn": "Logg inn",
   "op.libEmpty": "Ingen sanger i biblioteket ennå.",
   "op.libSearch": "Søk i biblioteket …",
+  "op.libTimeout": "Klarte ikke å laste biblioteket.",
+  "op.libRetry": "Prøv igjen",
+  "op.copyPin": "Kopier kode",
+  "op.pinCopied": "Kode kopiert",
   "library.title": "Menighetens sangbibliotek",
   "library.anon": "Logg inn med Sunday-kontoen din for å se menighetens publiserte sanger.",
   "library.signIn": "Logg inn med Sunday-konto",
@@ -145,6 +149,10 @@ const en: Catalog = {
   "op.libSignIn": "Sign in",
   "op.libEmpty": "No songs in the library yet.",
   "op.libSearch": "Search the library …",
+  "op.libTimeout": "Couldn't load the library.",
+  "op.libRetry": "Try again",
+  "op.copyPin": "Copy code",
+  "op.pinCopied": "Code copied",
   "library.title": "Your church's song library",
   "library.anon": "Sign in with your Sunday account to see your church's published songs.",
   "library.signIn": "Sign in with Sunday account",
@@ -217,6 +225,10 @@ const sv: Catalog = {
   "op.libSignIn": "Logga in",
   "op.libEmpty": "Inga sånger i biblioteket än.",
   "op.libSearch": "Sök i biblioteket …",
+  "op.libTimeout": "Kunde inte ladda biblioteket.",
+  "op.libRetry": "Försök igen",
+  "op.copyPin": "Kopiera kod",
+  "op.pinCopied": "Kod kopierad",
   "library.title": "Församlingens sångbibliotek",
   "library.anon": "Logga in med ditt Sunday-konto för att se församlingens publicerade sånger.",
   "library.signIn": "Logga in med Sunday-konto",
@@ -289,6 +301,10 @@ const da: Catalog = {
   "op.libSignIn": "Log ind",
   "op.libEmpty": "Ingen sange i biblioteket endnu.",
   "op.libSearch": "Søg i biblioteket …",
+  "op.libTimeout": "Kunne ikke indlæse biblioteket.",
+  "op.libRetry": "Prøv igen",
+  "op.copyPin": "Kopiér kode",
+  "op.pinCopied": "Kode kopieret",
   "library.title": "Menighedens sangbibliotek",
   "library.anon": "Log ind med din Sunday-konto for at se menighedens publicerede sange.",
   "library.signIn": "Log ind med Sunday-konto",
@@ -361,6 +377,10 @@ const de: Catalog = {
   "op.libSignIn": "Anmelden",
   "op.libEmpty": "Noch keine Lieder in der Bibliothek.",
   "op.libSearch": "Bibliothek durchsuchen …",
+  "op.libTimeout": "Bibliothek konnte nicht geladen werden.",
+  "op.libRetry": "Erneut versuchen",
+  "op.copyPin": "Code kopieren",
+  "op.pinCopied": "Code kopiert",
   "library.title": "Lieder-Bibliothek der Gemeinde",
   "library.anon": "Melde dich mit deinem Sunday-Konto an, um die veröffentlichten Lieder der Gemeinde zu sehen.",
   "library.signIn": "Mit Sunday-Konto anmelden",
@@ -433,6 +453,10 @@ const fr: Catalog = {
   "op.libSignIn": "Se connecter",
   "op.libEmpty": "Aucun chant dans la bibliothèque pour l'instant.",
   "op.libSearch": "Rechercher dans la bibliothèque …",
+  "op.libTimeout": "Impossible de charger la bibliothèque.",
+  "op.libRetry": "Réessayer",
+  "op.copyPin": "Copier le code",
+  "op.pinCopied": "Code copié",
   "library.title": "Bibliothèque de chants de l'église",
   "library.anon": "Connectez-vous avec votre compte Sunday pour voir les chants publiés de l'église.",
   "library.signIn": "Se connecter avec un compte Sunday",
@@ -505,6 +529,10 @@ const pl: Catalog = {
   "op.libSignIn": "Zaloguj się",
   "op.libEmpty": "Brak pieśni w bibliotece.",
   "op.libSearch": "Szukaj w bibliotece …",
+  "op.libTimeout": "Nie udało się wczytać biblioteki.",
+  "op.libRetry": "Spróbuj ponownie",
+  "op.copyPin": "Kopiuj kod",
+  "op.pinCopied": "Kod skopiowany",
   "library.title": "Biblioteka pieśni kościoła",
   "library.anon": "Zaloguj się kontem Sunday, aby zobaczyć opublikowane pieśni kościoła.",
   "library.signIn": "Zaloguj się kontem Sunday",
@@ -530,6 +558,26 @@ export function detectLocale(): Locale {
   const primary = (navigator.language ?? "no").toLowerCase().split("-")[0];
   const mapped = primary === "nb" || primary === "nn" ? "no" : primary;
   return (LOCALES as readonly string[]).includes(mapped) ? (mapped as Locale) : "no";
+}
+
+/**
+ * Split a title string that uses a single `<em>…</em>` accent into ordered
+ * segments, so callers can render the accent as a styled <span> instead of
+ * `dangerouslySetInnerHTML`. Returns `[{text, em}]` in document order; titles
+ * without an `<em>` yield a single non-emphasised segment.
+ */
+export function splitAccent(s: string): { text: string; em: boolean }[] {
+  const out: { text: string; em: boolean }[] = [];
+  const re = /<em>(.*?)<\/em>/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    if (m.index > last) out.push({ text: s.slice(last, m.index), em: false });
+    out.push({ text: m[1], em: true });
+    last = m.index + m[0].length;
+  }
+  if (last < s.length) out.push({ text: s.slice(last), em: false });
+  return out;
 }
 
 /** Translate a key with `{var}` interpolation. Falls back no → key. */

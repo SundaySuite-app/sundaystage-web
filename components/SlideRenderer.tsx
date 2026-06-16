@@ -39,7 +39,12 @@ export function SlideRenderer({ frame, animateKey }: { frame: WebFrame | null; a
   if (frame.kind === "message" || frame.kind === "ended") {
     return (
       <div className="slide-stage" style={style}>
-        <div key={animateKey} className="slide-text slide-fade" style={{ "--fit": 0.85 } as React.CSSProperties}>
+        <div
+          key={animateKey}
+          className="slide-text slide-fade"
+          aria-live="polite"
+          style={{ "--fit": 0.85 } as React.CSSProperties}
+        >
           {frame.message ?? ""}
         </div>
       </div>
@@ -53,7 +58,12 @@ export function SlideRenderer({ frame, animateKey }: { frame: WebFrame | null; a
   return (
     <div className="slide-stage" style={style}>
       {frame.section_label ? <span className="slide-label">{frame.section_label}</span> : null}
-      <div key={animateKey} className="slide-text slide-fade" style={{ "--fit": fit } as React.CSSProperties}>
+      <div
+        key={animateKey}
+        className="slide-text slide-fade"
+        aria-live="polite"
+        style={{ "--fit": fit } as React.CSSProperties}
+      >
         {lines.map((line, i) => (
           <span key={i} style={{ display: "block" }}>
             {line}

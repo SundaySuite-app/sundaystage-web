@@ -2,15 +2,18 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Albert_Sans } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "./sw-register";
+import { LangSync } from "./lang-sync";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
   variable: "--font-display",
   axes: ["opsz"],
+  display: "swap",
 });
 const albert = Albert_Sans({
   subsets: ["latin"],
   variable: "--font-body",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -42,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="no" className={`${fraunces.variable} ${albert.variable}`}>
       <body>
         <ServiceWorkerRegister />
+        <LangSync />
         {children}
       </body>
     </html>
