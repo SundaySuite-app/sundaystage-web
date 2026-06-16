@@ -82,6 +82,8 @@ const no: Catalog = {
   "library.signIn": "Logg inn med Sunday-konto",
   "library.empty": "Ingen sanger publisert ennå. Publiser fra SundayStage på datamaskinen.",
   "op.remote": "Fjernstyrer desktop-appen",
+  "op.crashTitle": "Noe gikk galt i operatørpanelet.",
+  "op.crashReload": "Last inn på nytt",
 };
 
 const en: Catalog = {
@@ -158,6 +160,8 @@ const en: Catalog = {
   "library.signIn": "Sign in with Sunday account",
   "library.empty": "No songs published yet. Publish from SundayStage on the desktop.",
   "op.remote": "Remote-controlling the desktop app",
+  "op.crashTitle": "Something went wrong in the operator console.",
+  "op.crashReload": "Reload",
 };
 
 const sv: Catalog = {
@@ -234,6 +238,8 @@ const sv: Catalog = {
   "library.signIn": "Logga in med Sunday-konto",
   "library.empty": "Inga sånger publicerade än. Publicera från SundayStage på datorn.",
   "op.remote": "Fjärrstyr desktop-appen",
+  "op.crashTitle": "Något gick fel i operatörspanelen.",
+  "op.crashReload": "Ladda om",
 };
 
 const da: Catalog = {
@@ -310,6 +316,8 @@ const da: Catalog = {
   "library.signIn": "Log ind med Sunday-konto",
   "library.empty": "Ingen sange publiceret endnu. Udgiv fra SundayStage på computeren.",
   "op.remote": "Fjernstyrer desktop-appen",
+  "op.crashTitle": "Noget gik galt i operatørpanelet.",
+  "op.crashReload": "Genindlæs",
 };
 
 const de: Catalog = {
@@ -386,6 +394,8 @@ const de: Catalog = {
   "library.signIn": "Mit Sunday-Konto anmelden",
   "library.empty": "Noch keine Lieder veröffentlicht. Veröffentliche aus SundayStage am Computer.",
   "op.remote": "Steuert die Desktop-App fern",
+  "op.crashTitle": "In der Bedienkonsole ist ein Fehler aufgetreten.",
+  "op.crashReload": "Neu laden",
 };
 
 const fr: Catalog = {
@@ -462,6 +472,8 @@ const fr: Catalog = {
   "library.signIn": "Se connecter avec un compte Sunday",
   "library.empty": "Aucun chant publié pour l'instant. Publiez depuis SundayStage sur l'ordinateur.",
   "op.remote": "Contrôle l'application de bureau à distance",
+  "op.crashTitle": "Une erreur est survenue dans la console opérateur.",
+  "op.crashReload": "Recharger",
 };
 
 const pl: Catalog = {
@@ -538,6 +550,8 @@ const pl: Catalog = {
   "library.signIn": "Zaloguj się kontem Sunday",
   "library.empty": "Nie opublikowano jeszcze żadnych pieśni. Opublikuj z SundayStage na komputerze.",
   "op.remote": "Zdalnie steruje aplikacją desktopową",
+  "op.crashTitle": "Coś poszło nie tak w panelu operatora.",
+  "op.crashReload": "Przeładuj",
 };
 
 export const CATALOGS: Record<Locale, Catalog> = { no, en, sv, da, de, fr, pl };

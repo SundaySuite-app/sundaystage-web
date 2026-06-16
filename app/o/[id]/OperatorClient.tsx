@@ -24,6 +24,8 @@ import {
   type Template,
 } from "@/lib/templates";
 import { WEBFRAME_VERSION, type WebFrame } from "@/lib/webframe";
+import { resolveHotkey } from "@/lib/operator/hotkeys";
+import { editTextToLines } from "@/lib/operator/edit";
 import { usePresence } from "@/lib/client/usePresence";
 import { SlideRenderer } from "@/components/SlideRenderer";
 import { LibraryPicker } from "@/components/LibraryPicker";
@@ -50,6 +52,9 @@ export function OperatorClient({ id }: { id: string }) {
   const [viewerId] = useState(() => `o-${Math.random().toString(36).slice(2)}`);
   const [editing, setEditing] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+  // Debounced mirror of editText, so the bottom-right preview reflects the draft
+  // live while typing without re-rendering the whole grid on every keystroke.
+  const [editDraft, setEditDraft] = useState("");
   const [templates, setTemplates] = useState<Template[]>([]);
   const [qr, setQr] = useState("");
   const [showQr, setShowQr] = useState(false);
@@ -255,15 +260,14 @@ export function OperatorClient({ id }: { id: string }) {
   // ── Slide editing / reordering ────────────────────────────────────────────
 
   function startEdit(i: number) {
+    const text = slides[i].lines.join("\n");
     setEditing(i);
-    setEditText(slides[i].lines.join("\n"));
+    setEditText(text);
+    setEditDraft(text);
   }
 
   function saveEdit(i: number) {
-    const lines = editText
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+    const lines = editTextToLines(editText);
     if (lines.length === 0) {
       setEditing(null);
       return;
@@ -361,27 +365,38 @@ export function OperatorClient({ id }: { id: string }) {
     }
   }
 
+  // Debounce the edit textarea into editDraft so the bottom-right preview
+  // reflects typing live (~180 ms) without thrashing on every keystroke.
+  useEffect(() => {
+    if (editing === null) return;
+    const handle = setTimeout(() => setEditDraft(editText), 180);
+    return () => clearTimeout(handle);
+  }, [editText, editing]);
+
   // ── Keyboard transport (Space/arrows/B/L), ignored while typing ───────────
   // A ref kept current every render delegates from one stable listener, so the
-  // hotkeys always see the latest state without re-subscribing.
+  // hotkeys always see the latest state without re-subscribing. The key→action
+  // decision lives in the pure, unit-tested lib/operator/hotkeys module.
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
     onKeyRef.current = (e: KeyboardEvent) => {
       if (lost) return;
-      const el = document.activeElement as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-      if (e.key === " " || e.key === "ArrowRight" || e.key === "PageDown") {
-        e.preventDefault();
-        step(1);
-      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
-        e.preventDefault();
-        step(-1);
-      } else if (e.key === "b" || e.key === "B") {
-        e.preventDefault();
-        toggleOverlay("black");
-      } else if (e.key === "l" || e.key === "L") {
-        e.preventDefault();
-        toggleOverlay("logo");
+      const action = resolveHotkey(e, document.activeElement);
+      if (!action) return;
+      e.preventDefault();
+      switch (action.type) {
+        case "next":
+          step(1);
+          break;
+        case "prev":
+          step(-1);
+          break;
+        case "black":
+          toggleOverlay("black");
+          break;
+        case "logo":
+          toggleOverlay("logo");
+          break;
       }
     };
   });
@@ -581,22 +596,36 @@ export function OperatorClient({ id }: { id: string }) {
             </div>
           )}
 
-          {current >= 0 && overlay === "none" ? (
-            <div
-              style={{
-                position: "fixed",
-                right: "1rem",
-                bottom: "5.6rem",
-                width: "13rem",
-                aspectRatio: "16/9",
-                borderRadius: "10px",
-                overflow: "hidden",
-                border: "1px solid rgba(255,255,255,0.14)",
-              }}
-            >
-              <SlideRenderer frame={frameForSlide(current)} animateKey={current} />
-            </div>
-          ) : null}
+          {current >= 0 && overlay === "none"
+            ? (() => {
+                // While editing the LIVE slide, mirror the debounced draft so the
+                // preview shows what saving would project (falling back to the
+                // saved frame when the draft is empty).
+                let previewFrame = frameForSlide(current);
+                if (editing === current) {
+                  const draftLines = editTextToLines(editDraft);
+                  if (draftLines.length > 0) {
+                    previewFrame = { ...previewFrame, text_lines: draftLines };
+                  }
+                }
+                return (
+                  <div
+                    style={{
+                      position: "fixed",
+                      right: "1rem",
+                      bottom: "5.6rem",
+                      width: "13rem",
+                      aspectRatio: "16/9",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                      border: "1px solid rgba(255,255,255,0.14)",
+                    }}
+                  >
+                    <SlideRenderer frame={previewFrame} animateKey={current} />
+                  </div>
+                );
+              })()
+            : null}
         </div>
       ) : (
         <div style={{ display: "grid", placeItems: "center" }}>

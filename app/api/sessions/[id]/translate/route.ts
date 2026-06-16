@@ -22,10 +22,11 @@
  */
 import { ok, fail, readJson, rateLimit, clientIp } from "@/lib/server/http";
 import { getById } from "@/lib/server/sessions";
-import { WebFrame, SENSITIVE_PLACEHOLDER } from "@/lib/webframe";
+import { WebFrame } from "@/lib/webframe";
 import { isTranslatableLocale, parseTranslateResult, extractText } from "@/lib/translate/prompt";
 import { getTranslator } from "@/lib/translate/client";
 import { frameHash, getCachedTranslation, putCachedTranslation } from "@/lib/translate/store";
+import { evaluateTranslateGate } from "@/lib/translate/gate";
 
 /** `source` tells the client why it got what it got (debuggable, honest). */
 type Source = "cache" | "fresh" | "passthrough" | "no_key" | "not_translatable" | "error";
@@ -52,29 +53,20 @@ export async function POST(
   const frame = parsedFrame.data;
   const target = body.target;
 
-  // The session must exist and be live (scopes the cache + blocks stale ids).
+  // The session must exist AND be live (scopes the cache, blocks stale ids, and
+  // — critically — returns 410 on an ENDED session so phones stop spending
+  // quota after the service wraps). All non-I/O gating lives in the pure module.
   const session = await getById(id);
-  if (!session) return fail(404, "not_found");
+  const gate = evaluateTranslateGate(session, frame);
+  if (gate.decision === "fail") return fail(gate.status, gate.error);
+  if (gate.decision === "skip") return reply(null, gate.source);
 
-  // Only slide frames carry translatable lyric/scripture lines.
-  if (frame.kind !== "slide" || !frame.text_lines || frame.text_lines.length === 0) {
-    return reply(null, "not_translatable");
-  }
-
-  // NEVER translate gated content. The sender collapses sensitive slides to a
-  // kind:"message" placeholder, but belt-and-suspenders: refuse to translate
-  // anything that even equals the placeholder text.
-  if (frame.text_lines.some((line) => line === SENSITIVE_PLACEHOLDER)) {
-    return reply(null, "not_translatable");
-  }
-
-  // The display already speaks this language — nothing to do.
-  if (frame.translation_lines && frame.translation_lines.length > 0) {
-    return reply(null, "passthrough");
-  }
+  // `proceed` guarantees a slide frame with non-empty text_lines; bind a
+  // non-optional local so the rest of the handler type-narrows cleanly.
+  const textLines = frame.text_lines ?? [];
 
   const hash = await frameHash({
-    text_lines: frame.text_lines,
+    text_lines: textLines,
     section_label: frame.section_label ?? null,
   });
 
@@ -93,11 +85,11 @@ export async function POST(
   // 3. Fresh translation. Any failure → original language, never a 5xx.
   try {
     const raw = await translator.translate({
-      text_lines: frame.text_lines,
+      text_lines: textLines,
       section_label: frame.section_label ?? null,
       target,
     });
-    const result = parseTranslateResult(extractText(raw), frame.text_lines.length);
+    const result = parseTranslateResult(extractText(raw), textLines.length);
     if (!result) return reply(null, "error");
 
     // Best-effort cache write; a failure here just means the next phone re-pays.

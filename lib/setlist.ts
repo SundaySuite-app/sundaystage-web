@@ -4,7 +4,24 @@
  * land?" math) is unit-tested. The operator calls these, updates React state,
  * then persists via the existing saveSetlist. No I/O here.
  */
+import { z } from "zod";
 import type { SlideDef } from "./sections";
+
+/**
+ * Validation for the persisted operator setlist. Additive + lenient on extras
+ * (`.passthrough()` would be too loose; we strip unknown keys) but it bounds the
+ * shape so a malformed/abusive PUT is rejected at the route, not on a later read.
+ */
+export const SlideDefSchema = z.object({
+  label: z.string().max(80).nullable(),
+  lines: z.array(z.string().max(500)).max(40),
+});
+
+export const SetlistSchema = z.object({
+  slides: z.array(SlideDefSchema).max(500),
+  current: z.number().int().min(-1),
+});
+export type StoredSetlist = z.infer<typeof SetlistSchema>;
 
 /** A structural change to a setlist, used to reindex the live `current`. */
 export type SetlistOp =

@@ -1,4 +1,4 @@
-import { OperatorClient } from "./OperatorClient";
+import { OperatorBoundary } from "./OperatorBoundary";
 
 export default async function OperatorPage({
   params,
@@ -6,5 +6,5 @@ export default async function OperatorPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <OperatorClient id={id} />;
+  return <OperatorBoundary id={id} />;
 }
