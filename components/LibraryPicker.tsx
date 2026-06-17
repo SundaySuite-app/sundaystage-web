@@ -14,7 +14,7 @@ import { t } from "@/lib/locale/i18n";
 export function LibraryPicker({ onPick }: { onPick: (song: LibrarySong) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const { state, songs } = useLibrary(open);
+  const { state, songs, reload } = useLibrary(open);
 
   const needle = q.trim().toLowerCase();
   const filtered = needle ? songs.filter((s) => s.title.toLowerCase().includes(needle)) : songs;
@@ -28,6 +28,18 @@ export function LibraryPicker({ onPick }: { onPick: (song: LibrarySong) => void 
       <div className="op-templates-menu">
         {state === "loading" ? (
           <p className="muted">{t("op.libLoading")}</p>
+        ) : state === "timeout" ? (
+          <p className="muted">
+            {t("op.libTimeout")}{" "}
+            <button
+              type="button"
+              className="op-template-load"
+              style={{ display: "inline", width: "auto", color: "var(--gold-300)" }}
+              onClick={() => void reload()}
+            >
+              {t("op.libRetry")} →
+            </button>
+          </p>
         ) : state === "anon" ? (
           <p className="muted">
             {t("op.libAnon")}{" "}

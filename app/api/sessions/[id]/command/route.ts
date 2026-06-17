@@ -24,7 +24,10 @@ export async function POST(
   const body = await readJson<{ cmd?: unknown; cmd_seq?: unknown }>(req);
   const cmd = body?.cmd as RemoteCommand;
   if (!REMOTE_COMMANDS.includes(cmd)) return fail(400, "invalid_command");
-  const cmdSeq = typeof body?.cmd_seq === "number" ? Math.trunc(body.cmd_seq) : 0;
+  if (typeof body?.cmd_seq !== "number" || !Number.isFinite(body.cmd_seq) || body.cmd_seq < 0) {
+    return fail(400, "invalid_cmd_seq");
+  }
+  const cmdSeq = Math.trunc(body.cmd_seq);
 
   await broadcast(channels.commands(id), events.command, { cmd, cmd_seq: cmdSeq });
   return ok({ sent: true });

@@ -37,6 +37,7 @@ export function SceneClient({ code }: { code: string }) {
   const degraded = join === "offline" || (!connected && join === "ok");
   const showSlide = !!frame && frame.kind === "slide";
   const overlay = !!frame && (frame.kind === "black" || frame.kind === "logo");
+  const hasNext = showSlide && !!frame.next_lines && frame.next_lines.length > 0;
 
   return (
     <div className="scene-root">
@@ -63,7 +64,7 @@ export function SceneClient({ code }: { code: string }) {
         ) : showSlide ? (
           <>
             {frame.section_label ? <div className="scene-label">{frame.section_label}</div> : null}
-            <div key={state.seq} className="scene-now-text slide-fade">
+            <div key={state.seq} className="scene-now-text slide-fade" aria-live="polite">
               {(frame.text_lines ?? []).map((line, i) => (
                 <span key={i} style={{ display: "block" }}>
                   {line}
@@ -79,10 +80,10 @@ export function SceneClient({ code }: { code: string }) {
         )}
       </div>
 
-      <div className="scene-next">
+      <div className={`scene-next${hasNext ? "" : " scene-next--empty"}`}>
         <div className="scene-next-head">{t("scene.next")}</div>
-        {showSlide && frame.next_lines && frame.next_lines.length > 0 ? (
-          <div className="scene-next-text">
+        {hasNext && frame.next_lines ? (
+          <div className="scene-next-text" aria-live="polite">
             {frame.next_label ? <span className="scene-next-label">{frame.next_label}</span> : null}
             {frame.next_lines.map((line, i) => (
               <span key={i} style={{ display: "block" }}>

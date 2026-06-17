@@ -6,14 +6,9 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { createWriteClient } from "@/lib/supabase/server-write";
+import { sanitizeNext } from "@/lib/server/authNext";
 
 export const dynamic = "force-dynamic";
-
-/** Only allow same-origin relative redirects (no protocol-relative `//host`). */
-function sanitizeNext(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/library";
-  return next;
-}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams, origin } = request.nextUrl;
