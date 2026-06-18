@@ -13,9 +13,12 @@
   --ink-300: #b6b1c4;
   --ink-500: #7d7791;
 
-  --gold-500: #d4a73a;
-  --gold-300: #e9c878;
-  --gold-dim: rgba(212, 167, 58, 0.14);
+  /* Sunday Suite canonical gold (harmonized from the marketing site). The
+     deep near-black ground stays this app's own identity. */
+  --gold-500: #ebb84b;
+  --gold-300: #f2d58a;
+  --gold-deep: #d4a23a;
+  --gold-dim: rgba(235, 184, 75, 0.14);
 
   --danger: #e2604c;
   --ok: #5dbb78;
@@ -78,7 +81,7 @@ body {
   font-weight: 560;
   cursor: pointer;
 }
-.btn:hover { border-color: rgba(233, 200, 120, 0.45); }
+.btn:hover { border-color: rgba(242, 213, 138, 0.45); }
 .btn:active { transform: translateY(1px); }
 
 /* Motion-only flourishes: skip transitions for reduced-motion users. */
@@ -101,7 +104,7 @@ summary:focus-visible {
   box-shadow: 0 0 0 3px var(--gold-dim), 0 0 0 1px var(--gold-500);
 }
 .btn--gold:focus-visible {
-  box-shadow: 0 0 0 3px rgba(212, 167, 58, 0.35), 0 0 0 1px var(--ink-deep);
+  box-shadow: 0 0 0 3px rgba(235, 184, 75, 0.4), 0 0 0 1px var(--ink-deep);
 }
 .btn--gold {
   background: linear-gradient(160deg, var(--gold-300), var(--gold-500));
@@ -159,6 +162,20 @@ summary:focus-visible {
   height: 1px;
   margin: 2rem 0;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+}
+
+/* Loading spinner (route fallback). Reduced-motion users get a static ring. */
+.spinner {
+  width: 2.2rem;
+  height: 2.2rem;
+  margin: 1.4rem auto 0;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--gold-500);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .spinner { animation: spin 720ms linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 }
 
 /* Staggered load reveal (chrome only). */
@@ -335,7 +352,7 @@ summary:focus-visible {
   gap: 0.4rem;
   min-height: 5.6rem;
 }
-.op-slide:hover { border-color: rgba(233, 200, 120, 0.4); }
+.op-slide:hover { border-color: rgba(242, 213, 138, 0.4); }
 .op-slide.active {
   border-color: var(--gold-500);
   box-shadow: 0 0 0 3px var(--gold-dim);
@@ -393,7 +410,7 @@ summary:focus-visible {
   display: grid;
   place-items: center;
 }
-.op-mini:hover { border-color: rgba(233, 200, 120, 0.45); color: var(--ink-100); }
+.op-mini:hover { border-color: rgba(242, 213, 138, 0.45); color: var(--ink-100); }
 .op-mini:disabled { opacity: 0.35; cursor: default; }
 .op-mini2 { padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 10px; }
 
@@ -473,7 +490,7 @@ summary:focus-visible {
   bottom: calc(5.4rem + env(safe-area-inset-bottom));
   z-index: 60;
   background: var(--ink-800);
-  border: 1px solid rgba(233, 200, 120, 0.4);
+  border: 1px solid rgba(242, 213, 138, 0.4);
   color: var(--ink-100);
   border-radius: 999px;
   padding: 0.55rem 1.1rem;

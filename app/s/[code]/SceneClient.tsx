@@ -23,12 +23,16 @@ export function SceneClient({ code }: { code: string }) {
 
   if (join === "not_found") {
     return (
-      <div className="scene-root" style={{ placeItems: "center", gridTemplateRows: "1fr" }}>
-        <div className="state-quiet">
+      <main
+        className="scene-root"
+        style={{ placeItems: "center", gridTemplateRows: "1fr" }}
+        aria-label={t("display.notFound")}
+      >
+        <div className="state-quiet" role="alert">
           <div className="display">{t("display.notFound")}</div>
           <p>{t("display.notFoundHint")}</p>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -40,15 +44,15 @@ export function SceneClient({ code }: { code: string }) {
   const hasNext = showSlide && !!frame.next_lines && frame.next_lines.length > 0;
 
   return (
-    <div className="scene-root">
+    <main className="scene-root" aria-label={t("landing.scene")}>
       <div className="scene-bar">
         <span className="brand" style={{ fontSize: "0.95rem" }}>
           Sunday<b>Stage</b>
         </span>
         <span className="scene-bar-right">
           {degraded && !ended ? (
-            <span className="scene-badge">
-              <span className="conn-dot off" style={{ position: "static" }} />
+            <span className="scene-badge" role="status" aria-live="polite">
+              <span className="conn-dot off" style={{ position: "static" }} aria-hidden="true" />
               {join === "offline" ? t("display.offline") : t("display.reconnecting")}
             </span>
           ) : null}
@@ -95,7 +99,7 @@ export function SceneClient({ code }: { code: string }) {
           <div className="scene-next-empty">{t("scene.nextUnavailable")}</div>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 

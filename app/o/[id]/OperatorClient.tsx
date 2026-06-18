@@ -314,14 +314,31 @@ export function OperatorClient({ id }: { id: string }) {
 
   // ── Templates (per-device, localStorage) ──────────────────────────────────
 
-  function saveAsTemplate() {
+  // Briefly surface a confirmation message (e.g. after copying the PIN, or a
+  // failed save). Declared before its callers so the React compiler can see it
+  // as a stable event-handler dependency.
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1800);
+  }, []);
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
+  const saveAsTemplate = useCallback(() => {
     if (slides.length === 0) return;
     const name = window.prompt(t("op.templateNamePrompt"))?.trim();
     if (!name) return;
     const next = upsertTemplate(templates, { name, slides, savedAt: Date.now() });
     setTemplates(next);
-    if (!saveTemplates(next)) window.alert(t("op.templateQuota"));
-  }
+    // Inline, non-blocking notice via the existing toast (announced to AT) —
+    // an alert() would steal focus and break the keyboard transport flow.
+    if (!saveTemplates(next)) showToast(t("op.templateQuota"));
+  }, [slides, templates, showToast]);
 
   function loadTemplate(tp: Template) {
     setSlides(tp.slides);
@@ -342,16 +359,6 @@ export function OperatorClient({ id }: { id: string }) {
     await fetch(`/api/sessions/${id}/end`, { method: "POST", headers: auth });
     setLost(true);
   }
-
-  // Briefly surface a confirmation message (e.g. after copying the PIN).
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 1800);
-  }, []);
-  useEffect(() => () => {
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-  }, []);
 
   async function copyPin() {
     const code = stored?.code;
