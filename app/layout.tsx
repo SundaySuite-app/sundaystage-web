@@ -1,18 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Albert_Sans } from "next/font/google";
+import { Playfair_Display, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegister } from "./sw-register";
 import { LangSync } from "./lang-sync";
 
-const fraunces = Fraunces({
+// Sunday Suite brand fonts — Playfair Display (display/wordmark) + Hanken
+// Grotesk (body), shared across the suite.
+const display = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-display",
-  axes: ["opsz"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
-const albert = Albert_Sans({
+const body = Hanken_Grotesk({
   subsets: ["latin"],
   variable: "--font-body",
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -42,7 +45,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="no" className={`${fraunces.variable} ${albert.variable}`}>
+    <html lang="no" className={`${display.variable} ${body.variable}`}>
       <body>
         <ServiceWorkerRegister />
         <LangSync />

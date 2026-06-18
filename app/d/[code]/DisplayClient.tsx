@@ -57,12 +57,16 @@ export function DisplayClient({ code }: { code: string }) {
 
   if (join === "not_found") {
     return (
-      <div className="display-root show-cursor" style={{ display: "grid", placeItems: "center" }}>
-        <div className="state-quiet">
+      <main
+        className="display-root show-cursor"
+        style={{ display: "grid", placeItems: "center" }}
+        aria-label={t("display.notFound")}
+      >
+        <div className="state-quiet" role="alert">
           <div className="display">{t("display.notFound")}</div>
           <p>{t("display.notFoundHint")}</p>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -73,9 +77,12 @@ export function DisplayClient({ code }: { code: string }) {
   const degraded = join === "offline" || (!connected && join === "ok");
 
   return (
-    <div className={`display-root${cursorVisible ? " show-cursor" : ""}`}>
+    <main
+      className={`display-root${cursorVisible ? " show-cursor" : ""}`}
+      aria-label="SundayStage"
+    >
       {waiting || ended ? (
-        <div className="slide-stage" style={{ background: "#000" }}>
+        <div className="slide-stage" style={{ background: "#000" }} aria-live="polite">
           <div className="state-quiet">
             <span className="brand" style={{ fontSize: "1.4rem" }}>
               Sunday<b>Stage</b>
@@ -90,11 +97,11 @@ export function DisplayClient({ code }: { code: string }) {
         <SlideRenderer frame={state.frame} animateKey={state.seq} />
       )}
       {degraded && !ended ? (
-        <div className="conn-badge">
-          <span className="conn-dot off" />
+        <div className="conn-badge" role="status" aria-live="polite">
+          <span className="conn-dot off" aria-hidden="true" />
           {join === "offline" ? t("display.offline") : t("display.reconnecting")}
         </div>
       ) : null}
-    </div>
+    </main>
   );
 }

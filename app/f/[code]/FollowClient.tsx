@@ -135,22 +135,26 @@ export function FollowClient({ code }: { code: string }) {
   }, [sessionId, seq, lang]);
 
   return (
-    <div className="follow-root grain">
+    <main className="follow-root grain" aria-label="SundayStage">
       <div className="follow-bar">
         <span className="brand" style={{ fontSize: "0.95rem" }}>
           Sunday<b>Stage</b>
         </span>
         <span style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <LanguagePicker value={lang} onChange={setLang} />
-          <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <span className={`conn-dot${connected ? "" : " off"}`} style={{ position: "static" }} />
+          <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }} role="status">
+            <span
+              className={`conn-dot${connected ? "" : " off"}`}
+              style={{ position: "static" }}
+              aria-hidden="true"
+            />
             {ended ? "—" : t("follow.live")}
           </span>
         </span>
       </div>
       <div className="follow-body">
         {join === "not_found" ? (
-          <p className="muted">{t("display.notFound")}</p>
+          <p className="muted" role="alert">{t("display.notFound")}</p>
         ) : ended ? (
           <p className="follow-text" style={{ color: "var(--ink-300)" }}>{t("follow.ended")}</p>
         ) : !frame || frame.kind === "black" || frame.kind === "logo" ? (
@@ -166,7 +170,7 @@ export function FollowClient({ code }: { code: string }) {
           />
         )}
       </div>
-    </div>
+    </main>
   );
 }
 

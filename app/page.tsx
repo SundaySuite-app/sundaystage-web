@@ -73,7 +73,13 @@ export default function LandingPage() {
         </h1>
         <p className="sub">{t("landing.sub")}</p>
 
-        <div className="pin" onPaste={onPaste}>
+        <div
+          className="pin"
+          role="group"
+          aria-label={t("landing.pinLabel")}
+          aria-describedby={error ? "pin-error" : undefined}
+          onPaste={onPaste}
+        >
           {digits.map((d, i) => (
             <input
               key={i}
@@ -81,15 +87,26 @@ export default function LandingPage() {
                 inputs.current[i] = el;
               }}
               inputMode="numeric"
+              autoComplete={i === 0 ? "one-time-code" : "off"}
               autoFocus={i === 0}
               value={d}
               onChange={(e) => setDigit(i, e.target.value)}
               onKeyDown={(e) => onKeyDown(i, e)}
-              aria-label={`Siffer ${i + 1}`}
+              aria-label={`${t("landing.pinDigit")} ${i + 1}`}
+              aria-invalid={error ? true : undefined}
             />
           ))}
         </div>
-        {error ? <p className="error-text" style={{ marginTop: "0.8rem" }}>{error}</p> : null}
+        {error ? (
+          <p
+            id="pin-error"
+            className="error-text"
+            role="alert"
+            style={{ marginTop: "0.8rem" }}
+          >
+            {error}
+          </p>
+        ) : null}
 
         <div style={{ display: "flex", gap: "0.6rem", justifyContent: "center", marginTop: "1.4rem", flexWrap: "wrap" }}>
           <button className="btn btn--gold btn--lg" disabled={!isValidPin(code) || busy} onClick={() => void join("d")}>
