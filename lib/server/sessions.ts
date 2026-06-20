@@ -37,6 +37,9 @@ export async function createSession(opts: {
   origin: "desktop" | "web";
   title?: string;
   churchId?: string | null;
+  /** Optional pre-seeded setlist ({ slides, current }) — used by the
+   *  Plan→Stage import so the operator opens a session already laid out. */
+  setlist?: unknown;
 }): Promise<{ id: string; code: string; secret: string }> {
   const supabase = createServiceClient();
 
@@ -56,6 +59,7 @@ export async function createSession(opts: {
       origin: opts.origin,
       title: opts.title ?? "",
       church_id: opts.churchId ?? null,
+      ...(opts.setlist !== undefined ? { setlist: opts.setlist } : {}),
     })
     .select("id")
     .single();
