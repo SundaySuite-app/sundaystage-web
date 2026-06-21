@@ -101,6 +101,50 @@ const cmd = await api(`/api/sessions/${id}/command`, {
 });
 check("command accepted", cmd.status === 200, `got ${cmd.status}`);
 
+// 8b. Realtime RECEIVE over a PRIVATE channel: a real anon subscriber must still
+// get a server broadcast after the realtime.messages RLS change (a too-tight
+// policy → CHANNEL_ERROR → caught HERE before it blanks every display). Connects
+// straight to Supabase, so it needs the public env; skipped when unset.
+const RT_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const RT_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+if (RT_URL && RT_ANON) {
+  const { createClient } = await import("@supabase/supabase-js");
+  const sb = createClient(RT_URL, RT_ANON, { auth: { persistSession: false } });
+  const received = await new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => {
+      if (!done) {
+        done = true;
+        resolve(v);
+      }
+    };
+    const ch = sb.channel(`stage:session:${id}`, {
+      config: { broadcast: { self: false }, private: true },
+    });
+    ch.on("broadcast", { event: "frame" }, () => finish(true));
+    ch.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await api(`/api/sessions/${id}/frame`, {
+          method: "POST",
+          headers: auth,
+          body: JSON.stringify({ frame: frame(4), client_seq: 4 }),
+        });
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        finish(false);
+      }
+    });
+    setTimeout(() => finish(false), 8000);
+  });
+  check(
+    "anon private channel receives server broadcast",
+    received === true,
+    "→ realtime.messages receive policy too tight OR private flag missing (displays would blank)",
+  );
+  await sb.removeAllChannels();
+} else {
+  console.log("· skipping realtime receive check (set NEXT_PUBLIC_SUPABASE_URL + _ANON_KEY)");
+}
+
 // 9. End → join is gone, frame refused with 410
 const end = await api(`/api/sessions/${id}/end`, { method: "POST", headers: auth });
 check("end 200", end.status === 200);

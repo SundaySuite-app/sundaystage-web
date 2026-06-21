@@ -28,7 +28,11 @@ export function useChannel(
 
     const supabase = createClient();
     const channel = supabase.channel(topic, {
-      config: { broadcast: { self: false } },
+      // private: Realtime authorizes each subscriber against the realtime.messages
+      // RLS policy (migration 20260621120000). anon/authenticated may RECEIVE on
+      // stage:session:* but cannot .send() forged frames — closing the display
+      // hijack where a forged higher-seq broadcast overrode every screen.
+      config: { broadcast: { self: false }, private: true },
     });
 
     channel.on("broadcast", { event: "*" }, (msg) => {

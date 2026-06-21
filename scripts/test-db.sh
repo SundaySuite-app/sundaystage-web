@@ -20,14 +20,19 @@ run supabase/tests/_prelude.sql
 MIG=supabase/migrations/20260613040000_stage_schema.sql
 TRMIG=supabase/migrations/20260613120000_translation_cache.sql
 LIBMIG=supabase/migrations/20260615120000_library.sql
+# realtime_authz is guarded on realtime.messages presence → a clean no-op on the
+# vanilla postgres harness, but applied here to prove it parses + is idempotent.
+RTMIG=supabase/migrations/20260621120000_realtime_authz.sql
 echo "→ migration (1st apply)"
 run "$MIG"
 run "$TRMIG"
 run "$LIBMIG"
+run "$RTMIG"
 echo "→ migration (2nd apply — idempotency)"
 run "$MIG"
 run "$TRMIG"
 run "$LIBMIG"
+run "$RTMIG"
 
 echo "→ stage-logic assertions"
 docker cp supabase/tests/stage_logic_test.sql "$NAME:/tmp/t.sql" >/dev/null
