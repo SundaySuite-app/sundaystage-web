@@ -15,7 +15,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { pasteToSlides, sectionsToSlides, type SlideDef } from "@/lib/sections";
-import { moveSlide, removeSlideAt, updateSlideAt, reindexCurrent } from "@/lib/setlist";
+import {
+  MAX_SLIDE_LINES,
+  moveSlide,
+  removeSlideAt,
+  updateSlideAt,
+  reindexCurrent,
+} from "@/lib/setlist";
 import {
   loadTemplates,
   saveTemplates,
@@ -178,15 +184,32 @@ export function OperatorClient({ id }: { id: string }) {
     [auth, cmdSeq, id],
   );
 
+  // Briefly surface a confirmation message (e.g. after copying the PIN, or a
+  // failed save). Declared before its callers so the React compiler can see it
+  // as a stable event-handler dependency.
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 1800);
+  }, []);
+
+  // Persist the setlist. This is NOT fire-and-forget: a rejected PUT (e.g. a
+  // slide that exceeds the schema's line cap) must surface, or the operator's
+  // local edit silently vanishes on the next reload.
   const saveSetlist = useCallback(
-    (nextSlides: SlideDef[], nextCurrent: number) => {
-      void fetch(`/api/sessions/${id}/setlist`, {
-        method: "PUT",
-        headers: auth,
-        body: JSON.stringify({ setlist: { slides: nextSlides, current: nextCurrent } }),
-      });
+    async (nextSlides: SlideDef[], nextCurrent: number) => {
+      try {
+        const res = await fetch(`/api/sessions/${id}/setlist`, {
+          method: "PUT",
+          headers: auth,
+          body: JSON.stringify({ setlist: { slides: nextSlides, current: nextCurrent } }),
+        });
+        if (!res.ok) showToast(t("op.saveFailed"));
+      } catch {
+        showToast(t("op.saveFailed"));
+      }
     },
-    [auth, id],
+    [auth, id, showToast],
   );
 
   const frameForSlide = (index: number, arr: SlideDef[] = slides): WebFrame => {
@@ -272,6 +295,13 @@ export function OperatorClient({ id }: { id: string }) {
       setEditing(null);
       return;
     }
+    // Guard the schema's per-slide line cap on the client: keep the editor open
+    // and tell the operator, rather than saving a slide the route would 400 on
+    // (which the old fire-and-forget PUT dropped silently).
+    if (lines.length > MAX_SLIDE_LINES) {
+      showToast(t("op.slideTooLong"));
+      return;
+    }
     const next = updateSlideAt(slides, i, { lines });
     setSlides(next);
     setEditing(null);
@@ -314,14 +344,6 @@ export function OperatorClient({ id }: { id: string }) {
 
   // ── Templates (per-device, localStorage) ──────────────────────────────────
 
-  // Briefly surface a confirmation message (e.g. after copying the PIN, or a
-  // failed save). Declared before its callers so the React compiler can see it
-  // as a stable event-handler dependency.
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 1800);
-  }, []);
   useEffect(
     () => () => {
       if (toastTimer.current) clearTimeout(toastTimer.current);

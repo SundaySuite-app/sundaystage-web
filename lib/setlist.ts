@@ -12,9 +12,13 @@ import type { SlideDef } from "./sections";
  * (`.passthrough()` would be too loose; we strip unknown keys) but it bounds the
  * shape so a malformed/abusive PUT is rejected at the route, not on a later read.
  */
+/** Max lines a single slide may hold. Shared with the operator editor so the
+ * client can guard a slide before the persist route would 400 on it. */
+export const MAX_SLIDE_LINES = 40;
+
 export const SlideDefSchema = z.object({
   label: z.string().max(80).nullable(),
-  lines: z.array(z.string().max(500)).max(40),
+  lines: z.array(z.string().max(500)).max(MAX_SLIDE_LINES),
 });
 
 export const SetlistSchema = z.object({
