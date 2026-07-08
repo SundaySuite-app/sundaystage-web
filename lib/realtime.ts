@@ -17,10 +17,22 @@ export const events = {
   frame: "frame",
   /** Session lifecycle: payload { status: "live" | "ended" }. */
   session: "session",
-  /** Remote-control command: payload { cmd, cmd_seq } (commands channel). */
+  /** Remote-control command: payload is a CommandPayload (commands channel). */
   command: "command",
 } as const;
 
 /** Commands the desktop app accepts from a web operator. */
 export const REMOTE_COMMANDS = ["next", "prev", "black", "logo", "clear"] as const;
 export type RemoteCommand = (typeof REMOTE_COMMANDS)[number];
+
+/**
+ * What the server broadcasts on the commands channel. `sig` is
+ * base64url(HMAC-SHA256(session secret, `${sessionId}:${cmd}:${cmd_seq}`)) —
+ * see lib/commandSig.ts. The desktop drops any command whose signature does
+ * not verify, so a forged client broadcast on the channel is inert.
+ */
+export interface CommandPayload {
+  cmd: RemoteCommand;
+  cmd_seq: number;
+  sig: string;
+}

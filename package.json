@@ -37,6 +37,7 @@
     "eslint-config-next": "16.2.7",
     "typescript": "^5",
     "vitest": "^4.1.8",
-    "wrangler": "^4.33.1"
+    "wrangler": "^4.33.1",
+    "zod-to-json-schema": "^3.25.2"
   }
 }
