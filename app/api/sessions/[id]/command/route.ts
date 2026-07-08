@@ -7,7 +7,7 @@
  * key, so broadcasts are only trusted when signed with the session secret)
  * and validates cmd_seq monotonicity before acting (replay/stale rejection).
  */
-import { ok, fail, readJson, bearer } from "@/lib/server/http";
+import { ok, fail, readJson, bearer, rateLimit } from "@/lib/server/http";
 import { verifySecret, getById } from "@/lib/server/sessions";
 import { broadcast } from "@/lib/server/broadcast";
 import { signCommand } from "@/lib/commandSig";
@@ -24,6 +24,9 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> },
 ): Promise<Response> {
   const { id } = await ctx.params;
+  // Generous per-session cap (fast remote advancing is ~2-3/s) — this only
+  // stops a runaway/hostile client from flooding the broadcast channel.
+  if (!rateLimit(`cmd:${id}`, 300, 60_000)) return fail(429, "rate_limited");
   const secret = bearer(req);
   if (!(await verifySecret(id, secret))) return fail(401, "unauthorized");
 
