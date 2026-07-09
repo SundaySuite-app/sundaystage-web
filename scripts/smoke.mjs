@@ -145,6 +145,69 @@ if (RT_URL && RT_ANON) {
   console.log("· skipping realtime receive check (set NEXT_PUBLIC_SUPABASE_URL + _ANON_KEY)");
 }
 
+// 8c. Signed commands: the server-broadcast command must carry a valid HMAC
+// (what the desktop verifies before dispatching), and a FORGED client send on
+// the same channel must NOT verify — the whole point of the signature.
+if (RT_URL && RT_ANON) {
+  const verifySig = async (payload) => {
+    if (!payload?.sig) return false;
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"],
+    );
+    const mac = await crypto.subtle.sign(
+      "HMAC",
+      key,
+      new TextEncoder().encode(`${id}:${payload.cmd}:${payload.cmd_seq}`),
+    );
+    const expected = Buffer.from(mac).toString("base64url");
+    return expected === payload.sig;
+  };
+
+  const { createClient } = await import("@supabase/supabase-js");
+  const sb = createClient(RT_URL, RT_ANON, { auth: { persistSession: false } });
+  const payloads = [];
+  const ch = sb.channel(`stage:session:${id}:commands`, {
+    config: { broadcast: { self: true }, private: true },
+  });
+  ch.on("broadcast", { event: "command" }, (msg) => payloads.push(msg.payload ?? {}));
+  const subscribed = await new Promise((resolve) => {
+    ch.subscribe((status) => {
+      if (status === "SUBSCRIBED") resolve(true);
+      else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") resolve(false);
+    });
+    setTimeout(() => resolve(false), 8000);
+  });
+  check("commands channel subscribes (desktop receive path)", subscribed === true);
+  if (subscribed) {
+    // Legit path: POST → server signs → broadcast.
+    await api(`/api/sessions/${id}/command`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ cmd: "next", cmd_seq: 2 }),
+    });
+    // Forged path: a client send straight onto the channel, no secret involved.
+    await ch.send({ type: "broadcast", event: "command", payload: { cmd: "black", cmd_seq: 99 } });
+    await new Promise((r) => setTimeout(r, 4000));
+
+    const legit = payloads.find((p) => p.cmd_seq === 2);
+    const forged = payloads.find((p) => p.cmd_seq === 99);
+    check("server command arrives with a signature", Boolean(legit?.sig), JSON.stringify(payloads));
+    check("server command signature verifies", legit ? await verifySig(legit) : false);
+    check(
+      "forged client command does NOT verify (desktop would drop it)",
+      forged ? !(await verifySig(forged)) : true,
+      "forged payload verified — remote-control auth is broken",
+    );
+  }
+  await sb.removeAllChannels();
+} else {
+  console.log("· skipping signed-command check (set NEXT_PUBLIC_SUPABASE_URL + _ANON_KEY)");
+}
+
 // 9. End → join is gone, frame refused with 410
 const end = await api(`/api/sessions/${id}/end`, { method: "POST", headers: auth });
 check("end 200", end.status === 200);
