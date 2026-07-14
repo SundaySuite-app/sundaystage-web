@@ -140,6 +140,41 @@ if (RT_URL && RT_ANON) {
     received === true,
     "→ realtime.messages receive policy too tight OR private flag missing (displays would blank)",
   );
+
+  // 8c. Commands channel hardening: the desktop app subscribes to
+  // stage:session:<id>:commands as a PRIVATE channel. Assert an anon private
+  // subscriber still receives a server-published command (a too-tight policy or
+  // a missing send-side private flag → remote control silently dies).
+  const cmdReceived = await new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => {
+      if (!done) {
+        done = true;
+        resolve(v);
+      }
+    };
+    const ch = sb.channel(`stage:session:${id}:commands`, {
+      config: { private: true },
+    });
+    ch.on("broadcast", { event: "command" }, () => finish(true));
+    ch.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await api(`/api/sessions/${id}/command`, {
+          method: "POST",
+          headers: auth,
+          body: JSON.stringify({ cmd: "next", cmd_seq: 2 }),
+        });
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        finish(false);
+      }
+    });
+    setTimeout(() => finish(false), 8000);
+  });
+  check(
+    "anon private commands channel receives server broadcast",
+    cmdReceived === true,
+    "→ desktop remote control would break (receive policy too tight OR private send flag missing)",
+  );
   await sb.removeAllChannels();
 } else {
   console.log("· skipping realtime receive check (set NEXT_PUBLIC_SUPABASE_URL + _ANON_KEY)");
