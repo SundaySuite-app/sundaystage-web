@@ -34,11 +34,19 @@ export async function POST(
     return fail(404, "not_found");
   }
 
-  await broadcast(channels.session(id), events.frame, {
-    v: 1,
-    seq: result.seq,
-    frame: parsed.data,
-    emitted_at: new Date().toISOString(),
-  });
+  // Frame channel is PRIVATE (see lib/client/useChannel.ts + migration
+  // 20260621120000): the server send must be `private` too, or it lands on the
+  // public tenant topic and never reaches the private subscribers.
+  await broadcast(
+    channels.session(id),
+    events.frame,
+    {
+      v: 1,
+      seq: result.seq,
+      frame: parsed.data,
+      emitted_at: new Date().toISOString(),
+    },
+    { private: true },
+  );
   return ok({ seq: result.seq });
 }

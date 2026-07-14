@@ -6,9 +6,14 @@
 // display.
 
 export const channels = {
-  /** Frames + lifecycle for one live session. */
+  /** Frames + lifecycle for one live session. PRIVATE channel — subscribers
+   *  join with `config.private` and the server sends with `{ private: true }`
+   *  (RLS on realtime.messages denies forged anon frames). */
   session: (sessionId: string) => `stage:session:${sessionId}`,
-  /** Remote-control commands (web operator → desktop app). */
+  /** Remote-control commands (web operator → desktop app). PRIVATE channel:
+   *  the desktop subscriber joins with `config.private` so a forged anon
+   *  `.send()` command is denied. The server dual-sends (public + private)
+   *  while old desktop builds still listen on the public topic. */
   commands: (sessionId: string) => `stage:session:${sessionId}:commands`,
 } as const;
 

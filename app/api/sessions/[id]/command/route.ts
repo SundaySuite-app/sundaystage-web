@@ -29,6 +29,16 @@ export async function POST(
   }
   const cmdSeq = Math.trunc(body.cmd_seq);
 
-  await broadcast(channels.commands(id), events.command, { cmd, cmd_seq: cmdSeq });
+  // Commands channel is being hardened to PRIVATE (a forged anon `.send()` of a
+  // remote command could otherwise hijack the desktop's slide control). New
+  // desktop builds subscribe on the private topic; older builds still in the
+  // field listen on the public topic — so DUAL-SEND during the fleet-upgrade
+  // window. Drop `alsoPublic` once every desktop is upgraded (see PR DEPLOY-NOTE).
+  await broadcast(
+    channels.commands(id),
+    events.command,
+    { cmd, cmd_seq: cmdSeq },
+    { private: true, alsoPublic: true },
+  );
   return ok({ sent: true });
 }

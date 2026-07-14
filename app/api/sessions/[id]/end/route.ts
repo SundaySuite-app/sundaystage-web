@@ -11,6 +11,12 @@ export async function POST(
   const { id } = await ctx.params;
   if (!(await verifySecret(id, bearer(req)))) return fail(401, "unauthorized");
   await endSession(id);
-  await broadcast(channels.session(id), events.session, { status: "ended" });
+  // Lifecycle event rides the same PRIVATE frame channel → send private too.
+  await broadcast(
+    channels.session(id),
+    events.session,
+    { status: "ended" },
+    { private: true },
+  );
   return ok({ ended: true });
 }
