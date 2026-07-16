@@ -44,9 +44,18 @@ export async function POST(
 
   // verifySecret passed, so the bearer is the session secret — sign with it.
   // The desktop recomputes this HMAC before dispatching; unsigned or forged
-  // broadcasts on the channel are dropped.
+  // broadcasts on the channel are dropped (application-layer defence).
   const sig = await signCommand(secret as string, id, cmd, cmdSeq);
   const payload = { cmd, cmd_seq: cmdSeq, sig } satisfies CommandPayload;
-  await broadcast(channels.commands(id), events.command, { ...payload });
+  // Transport-layer defence on top: the commands channel is PRIVATE (RLS-gated),
+  // so forged anon `.send()`s are rejected before they reach subscribers. New
+  // desktop builds subscribe on the private topic; older builds in the field
+  // listen on the public topic — DUAL-SEND during the fleet-upgrade window.
+  // The public leg stays safe meanwhile: old desktops verify the HMAC. Drop
+  // `alsoPublic` once the fleet is upgraded (see PR DEPLOY-NOTE).
+  await broadcast(channels.commands(id), events.command, { ...payload }, {
+    private: true,
+    alsoPublic: true,
+  });
   return ok({ sent: true });
 }
