@@ -25,18 +25,21 @@ LIBMIG=supabase/migrations/20260615120000_library.sql
 # prove they parse + are idempotent.
 RTMIG=supabase/migrations/20260621120000_realtime_authz.sql
 CMDMIG=supabase/migrations/20260714120000_commands_channel_authz.sql
+GRANTMIG=supabase/migrations/20260808120000_realtime_grants.sql
 echo "→ migration (1st apply)"
 run "$MIG"
 run "$TRMIG"
 run "$LIBMIG"
 run "$RTMIG"
 run "$CMDMIG"
+run "$GRANTMIG"
 echo "→ migration (2nd apply — idempotency)"
 run "$MIG"
 run "$TRMIG"
 run "$LIBMIG"
 run "$RTMIG"
 run "$CMDMIG"
+run "$GRANTMIG"
 
 echo "→ stage-logic assertions"
 docker cp supabase/tests/stage_logic_test.sql "$NAME:/tmp/t.sql" >/dev/null

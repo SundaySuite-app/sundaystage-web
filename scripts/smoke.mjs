@@ -89,7 +89,7 @@ check(
 const put = await api(`/api/sessions/${id}/setlist`, {
   method: "PUT",
   headers: auth,
-  body: JSON.stringify({ setlist: { slides: [{ lines: ["a"] }] } }),
+  body: JSON.stringify({ setlist: { slides: [{ label: null, lines: ["a"] }], current: 0 } }),
 });
 check("setlist saved", put.status === 200, `got ${put.status}`);
 
