@@ -11,6 +11,13 @@
   "routes": [{ "pattern": "stage.sundaysuite.app", "custom_domain": true }],
   "observability": {
     "enabled": true
+  },
+  // Sunday Account bearer verification for /api/library/* (non-secret;
+  // JWKS is public by definition). Same trio as sundaysong's API.
+  "vars": {
+    "SUNDAY_JWKS_URL": "https://rkiahljrkormwzogghpc.supabase.co/auth/v1/.well-known/jwks.json",
+    "SUNDAY_AUTH_AUDIENCE": "authenticated",
+    "SUNDAY_AUTH_ISSUER": "https://rkiahljrkormwzogghpc.supabase.co/auth/v1"
   }
   // Runtime env (NEXT_PUBLIC_* are build-time inlined):
   //   SUPABASE_SERVICE_ROLE_KEY is a runtime Worker secret:
