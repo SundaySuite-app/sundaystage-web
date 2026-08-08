@@ -43,7 +43,9 @@ const { id, secret } = created;
 // 2. Subscribe like a display would.
 const supabase = createClient(url, anon);
 const waiting = new Map(); // seq -> resolve(receivedAt)
-const channel = supabase.channel(`stage:session:${id}`, { config: { broadcast: { self: true } } });
+const channel = supabase.channel(`stage:session:${id}`, {
+  config: { private: true, broadcast: { self: true } },
+});
 channel.on("broadcast", { event: "frame" }, (msg) => {
   const seq = msg.payload?.seq;
   const resolve = waiting.get(seq);
