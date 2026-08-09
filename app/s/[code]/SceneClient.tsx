@@ -11,11 +11,12 @@
 import { useEffect, useState } from "react";
 import { useSessionState } from "@/lib/client/useSessionState";
 import { usePresence } from "@/lib/client/usePresence";
+import { newViewerId } from "@/lib/viewerId";
 import { t } from "@/lib/locale/i18n";
 
 export function SceneClient({ code }: { code: string }) {
   const { join, session, state, connected } = useSessionState(code);
-  const [viewerId] = useState(() => `s-${Math.random().toString(36).slice(2)}`);
+  const [viewerId] = useState(() => newViewerId("s"));
   usePresence(session?.id ?? null, { viewerId, role: "scene" });
 
   const clock = useClock();

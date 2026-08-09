@@ -17,7 +17,7 @@ export interface LibrarySong {
   ccli_song_id?: string | null;
 }
 
-export type LibraryState = "loading" | "anon" | "ready" | "timeout";
+type LibraryState = "loading" | "anon" | "ready" | "timeout";
 
 /** Hard cap on the library fetch so a stalled request shows a retry, not a
  * spinner that never resolves. Covers fetch() AND body read via one signal. */

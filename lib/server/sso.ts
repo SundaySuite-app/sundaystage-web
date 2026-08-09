@@ -44,7 +44,7 @@ export async function resolveChurchId(): Promise<string | null> {
   }
 }
 
-export interface SundayUser {
+interface SundayUser {
   userId: string;
   churchIds: string[];
 }

@@ -17,7 +17,7 @@ import "server-only";
 // bypasses the realtime.messages RLS, so we can publish to a private topic that
 // forged anon clients are denied INSERT on.
 
-export interface BroadcastOptions {
+interface BroadcastOptions {
   /** Publish on the RLS-authorized PRIVATE tenant topic. The subscriber must
    *  join the channel with `config.private = true` (frame channel + the new
    *  desktop commands channel). Default false = public. */
@@ -29,7 +29,7 @@ export interface BroadcastOptions {
   alsoPublic?: boolean;
 }
 
-export interface RealtimeMessage {
+interface RealtimeMessage {
   topic: string;
   event: string;
   payload: Record<string, unknown>;

@@ -5,6 +5,8 @@
  *   BASE=https://stage.sundaysuite.app node scripts/smoke.mjs
  * Needs a real Supabase behind the server (frames go through the RPC).
  */
+import { verifyCommandSig } from "./commandSig.mjs";
+
 const BASE = process.env.BASE ?? "http://localhost:3000";
 
 let failed = 0;
@@ -184,23 +186,8 @@ if (RT_URL && RT_ANON) {
 // (what the desktop verifies before dispatching), and a FORGED client send on
 // the same channel must NOT verify — the whole point of the signature.
 if (RT_URL && RT_ANON) {
-  const verifySig = async (payload) => {
-    if (!payload?.sig) return false;
-    const key = await crypto.subtle.importKey(
-      "raw",
-      new TextEncoder().encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"],
-    );
-    const mac = await crypto.subtle.sign(
-      "HMAC",
-      key,
-      new TextEncoder().encode(`${id}:${payload.cmd}:${payload.cmd_seq}`),
-    );
-    const expected = Buffer.from(mac).toString("base64url");
-    return expected === payload.sig;
-  };
+  const verifySig = (payload) =>
+    verifyCommandSig(secret, id, payload?.cmd, payload?.cmd_seq, payload?.sig);
 
   const { createClient } = await import("@supabase/supabase-js");
   const sb = createClient(RT_URL, RT_ANON, { auth: { persistSession: false } });

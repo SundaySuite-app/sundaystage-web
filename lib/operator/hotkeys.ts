@@ -18,12 +18,12 @@ export type HotkeyAction =
   | { type: "logo" };
 
 /** The minimal slice of a KeyboardEvent the mapping needs. */
-export interface HotkeyEvent {
+interface HotkeyEvent {
   key: string;
 }
 
 /** Tag names (and the contenteditable flag) we must NOT steal keys from. */
-export interface ActiveElementInfo {
+interface ActiveElementInfo {
   tagName?: string;
   isContentEditable?: boolean;
 }

@@ -15,7 +15,7 @@ export interface SessionLike {
   status: "live" | "ended";
 }
 
-export type TranslateGate =
+type TranslateGate =
   | { decision: "proceed" }
   /** HTTP failure (session missing or no longer live). */
   | { decision: "fail"; status: number; error: string }

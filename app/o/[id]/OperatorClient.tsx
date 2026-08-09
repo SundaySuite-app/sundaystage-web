@@ -33,7 +33,9 @@ import { WEBFRAME_VERSION, type WebFrame } from "@/lib/webframe";
 import { resolveHotkey } from "@/lib/operator/hotkeys";
 import { editTextToLines } from "@/lib/operator/edit";
 import { createCmdSeq } from "@/lib/operator/cmdSeq";
+import { createFrameSender } from "@/lib/operator/frameSender";
 import { usePresence } from "@/lib/client/usePresence";
+import { newViewerId } from "@/lib/viewerId";
 import { SlideRenderer } from "@/components/SlideRenderer";
 import { LibraryPicker } from "@/components/LibraryPicker";
 import { t } from "@/lib/locale/i18n";
@@ -58,7 +60,7 @@ export function OperatorClient({ id }: { id: string }) {
   // Clock-seeded, never a 0-based counter: the desktop drops any cmd_seq <= the
   // highest it has seen, so a phone reload used to silently kill the remote.
   const [nextCmdSeq] = useState(() => createCmdSeq());
-  const [viewerId] = useState(() => `o-${Math.random().toString(36).slice(2)}`);
+  const [viewerId] = useState(() => newViewerId("o"));
   const [editing, setEditing] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   // Debounced mirror of editText, so the bottom-right preview reflects the draft
@@ -162,16 +164,27 @@ export function OperatorClient({ id }: { id: string }) {
     };
   }, [stored?.code, host]);
 
+  // Every frame goes through ONE coalescer for the page's lifetime: latest-wins
+  // while a POST is in flight, and a monotonic client_seq so the server's
+  // stale-frame guard (409) can drop anything that arrives late. Built on first
+  // use rather than during render — the sender reads `authRef` because the
+  // session secret only resolves after mount, and refs must not be handed to a
+  // function that render calls.
+  const authRef = useRef(auth);
+  useEffect(() => {
+    authRef.current = auth;
+  });
+  const frameSender = useRef<ReturnType<typeof createFrameSender> | null>(null);
   const postFrame = useCallback(
-    async (frame: WebFrame) => {
-      const res = await fetch(`/api/sessions/${id}/frame`, {
-        method: "POST",
-        headers: auth,
-        body: JSON.stringify({ frame }),
+    (frame: WebFrame) => {
+      frameSender.current ??= createFrameSender({
+        sessionId: id,
+        headers: () => authRef.current,
+        onLost: () => setLost(true),
       });
-      if (res.status === 410 || res.status === 404) setLost(true);
+      frameSender.current.push(frame);
     },
-    [auth, id],
+    [id],
   );
 
   const sendCommand = useCallback(
@@ -231,7 +244,7 @@ export function OperatorClient({ id }: { id: string }) {
     if (index < 0 || index >= slides.length) return;
     setCurrent(index);
     setOverlay("none");
-    void postFrame(frameForSlide(index));
+    postFrame(frameForSlide(index));
     saveSetlist(slides, index);
   }
 
@@ -250,11 +263,11 @@ export function OperatorClient({ id }: { id: string }) {
     }
     if (overlay === kind) {
       setOverlay("none");
-      if (current >= 0) void postFrame(frameForSlide(current));
+      if (current >= 0) postFrame(frameForSlide(current));
       return;
     }
     setOverlay(kind);
-    void postFrame({ v: WEBFRAME_VERSION, kind });
+    postFrame({ v: WEBFRAME_VERSION, kind });
   }
 
   function addSlides() {
@@ -265,7 +278,7 @@ export function OperatorClient({ id }: { id: string }) {
     setPaste("");
     saveSetlist(next, current);
     // The live slide may have gained a "next" — refresh the scene monitor.
-    if (current >= 0 && overlay === "none") void postFrame(frameForSlide(current, next));
+    if (current >= 0 && overlay === "none") postFrame(frameForSlide(current, next));
   }
 
   // Append a song chosen from the church library, through the SAME slide flow as
@@ -278,7 +291,7 @@ export function OperatorClient({ id }: { id: string }) {
     const next = [...slides, ...parsed];
     setSlides(next);
     saveSetlist(next, current);
-    if (current >= 0 && overlay === "none") void postFrame(frameForSlide(current, next));
+    if (current >= 0 && overlay === "none") postFrame(frameForSlide(current, next));
   }
 
   // ── Slide editing / reordering ────────────────────────────────────────────
@@ -307,7 +320,7 @@ export function OperatorClient({ id }: { id: string }) {
     setSlides(next);
     setEditing(null);
     saveSetlist(next, current);
-    if (i === current && overlay === "none") void postFrame(frameForSlide(i, next));
+    if (i === current && overlay === "none") postFrame(frameForSlide(i, next));
   }
 
   function doMove(from: number, to: number) {
@@ -317,7 +330,7 @@ export function OperatorClient({ id }: { id: string }) {
     setSlides(next);
     setCurrent(nextCurrent);
     saveSetlist(next, nextCurrent);
-    if (nextCurrent >= 0 && overlay === "none") void postFrame(frameForSlide(nextCurrent, next));
+    if (nextCurrent >= 0 && overlay === "none") postFrame(frameForSlide(nextCurrent, next));
   }
 
   function doRemove(i: number) {
@@ -332,7 +345,7 @@ export function OperatorClient({ id }: { id: string }) {
     // Refresh the live slide's next-preview, but don't yank the projector onto a
     // different slide just because an earlier one was deleted.
     if (!wasShowingRemoved && nextCurrent >= 0 && overlay === "none") {
-      void postFrame(frameForSlide(nextCurrent, next));
+      postFrame(frameForSlide(nextCurrent, next));
     }
   }
 

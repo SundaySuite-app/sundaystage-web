@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { channels } from "@/lib/realtime";
+import { newViewerId } from "@/lib/viewerId";
 
-export interface PresenceViewer {
+interface PresenceViewer {
   viewerId: string;
   role: "display" | "follow" | "operator" | "scene";
 }
@@ -27,7 +28,7 @@ export function usePresence(
 
     const supabase = createClient();
     const channel = supabase.channel(`${channels.session(sessionId)}:presence`, {
-      config: { presence: { key: self?.viewerId ?? `obs-${Math.random().toString(36).slice(2)}` } },
+      config: { presence: { key: self?.viewerId ?? newViewerId("obs") } },
     });
 
     channel.on("presence", { event: "sync" }, () => {

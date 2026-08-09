@@ -8,13 +8,14 @@
 import { useEffect, useState } from "react";
 import { useSessionState } from "@/lib/client/useSessionState";
 import { usePresence } from "@/lib/client/usePresence";
+import { newViewerId } from "@/lib/viewerId";
 import { SlideRenderer } from "@/components/SlideRenderer";
 import { t } from "@/lib/locale/i18n";
 
 export function DisplayClient({ code }: { code: string }) {
   const { join, session, state, connected } = useSessionState(code);
   const [cursorVisible, setCursorVisible] = useState(true);
-  const [viewerId] = useState(() => `d-${Math.random().toString(36).slice(2)}`);
+  const [viewerId] = useState(() => newViewerId("d"));
   usePresence(session?.id ?? null, { viewerId, role: "display" });
 
   // Keep the projector awake for the whole service.

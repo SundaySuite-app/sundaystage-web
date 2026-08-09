@@ -31,7 +31,7 @@ interface StoredLast {
 }
 
 /** What a rehydrate hands back: paint this, then let the join validate it. */
-export interface RehydratedLast {
+interface RehydratedLast {
   sessionId: string | null;
   state: DisplayState;
 }

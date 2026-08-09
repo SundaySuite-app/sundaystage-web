@@ -21,13 +21,13 @@ import type { FrameEnvelope } from "@/lib/webframe";
 import { classifyJoinStatus, loadLastState, saveLastState } from "./lastframe";
 import { useChannel } from "./useChannel";
 
-export interface JoinedSession {
+interface JoinedSession {
   id: string;
   title: string;
   origin: "desktop" | "web";
 }
 
-export type JoinStatus = "joining" | "ok" | "not_found" | "offline";
+type JoinStatus = "joining" | "ok" | "not_found" | "offline";
 
 const POLL_HEALTHY_MS = 15_000;
 const POLL_DISCONNECTED_MS = 3_000;

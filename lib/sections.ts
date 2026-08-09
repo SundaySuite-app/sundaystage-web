@@ -7,7 +7,7 @@
  * re-split so no slide exceeds `maxLines`. Pure + unit-tested.
  */
 
-export interface Section {
+interface Section {
   label: string | null;
   lines: string[];
 }
