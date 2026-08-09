@@ -15,7 +15,7 @@ export interface Template {
   savedAt: number;
 }
 
-export const TEMPLATES_KEY = "stage-templates";
+const TEMPLATES_KEY = "stage-templates";
 export const MAX_TEMPLATES = 20;
 
 /** Defensively parse the raw localStorage value into a clean Template[]. */

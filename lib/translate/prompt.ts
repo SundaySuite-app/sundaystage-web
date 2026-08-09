@@ -18,7 +18,7 @@ import { LOCALES, type Locale } from "@/lib/locale/i18n";
 export const TRANSLATE_MODEL = "claude-opus-4-8";
 
 /** Hard cap mirrors WebFrame.text_lines (.max(40)); keep prompts bounded. */
-export const MAX_TRANSLATE_LINES = 40;
+const MAX_TRANSLATE_LINES = 40;
 
 /** Human-readable target-language names for the prompt (Norwegian-first UX). */
 const LANGUAGE_NAMES: Record<Locale, string> = {

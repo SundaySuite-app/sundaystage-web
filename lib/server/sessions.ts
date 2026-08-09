@@ -9,7 +9,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { generatePin, generateUnique } from "@/lib/codes";
 import type { WebFrame } from "@/lib/webframe";
 
-export interface SessionRow {
+interface SessionRow {
   id: string;
   code: string;
   origin: "desktop" | "web";
@@ -101,7 +101,7 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   return diff === 0;
 }
 
-export type SetFrameResult =
+type SetFrameResult =
   | { ok: true; seq: number }
   | { ok: false; reason: "not_found" | "closed" | "stale" };
 

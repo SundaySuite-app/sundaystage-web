@@ -2,7 +2,7 @@
 // under test. (The scaffold also carried "resume code" helpers — XXXX-YY host
 // codes — for a resume flow that was never built; removed as dead code.)
 
-export type Rng = () => number; // returns [0,1)
+type Rng = () => number; // returns [0,1)
 
 /** 6-digit room PIN, e.g. "402815". Leading digits allowed. */
 export function generatePin(rng: Rng = Math.random): string {

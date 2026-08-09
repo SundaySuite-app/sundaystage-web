@@ -10,7 +10,7 @@ import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /** One slide-shaped section (matches the operator's SlideDef). */
-export const PublishSection = z.object({
+const PublishSection = z.object({
   label: z.string().max(80).nullish(),
   lines: z.array(z.string().max(500)).max(60),
 });

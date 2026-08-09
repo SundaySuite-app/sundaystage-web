@@ -21,7 +21,7 @@
 import { FrameCoalescer, type SendResultInfo } from "@/lib/coalesce";
 import type { WebFrame } from "@/lib/webframe";
 
-export interface FrameSenderOptions {
+interface FrameSenderOptions {
   /** The session this operator drives (stable for the page's lifetime). */
   sessionId: string;
   /**

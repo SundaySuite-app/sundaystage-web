@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { channels } from "@/lib/realtime";
 
-export interface PresenceViewer {
+interface PresenceViewer {
   viewerId: string;
   role: "display" | "follow" | "operator" | "scene";
 }

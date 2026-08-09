@@ -17,7 +17,7 @@ import { buildTranslateRequest, type TranslateInput } from "./prompt";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 
-export interface Translator {
+interface Translator {
   /** Returns the raw Anthropic response object, or throws on transport error.
    * Pass it to extractText() (pure) to get the model's text. */
   translate(input: TranslateInput): Promise<unknown>;

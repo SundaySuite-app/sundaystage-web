@@ -16,7 +16,7 @@ import type { SlideDef } from "./sections";
  * client can guard a slide before the persist route would 400 on it. */
 export const MAX_SLIDE_LINES = 40;
 
-export const SlideDefSchema = z.object({
+const SlideDefSchema = z.object({
   label: z.string().max(80).nullable(),
   lines: z.array(z.string().max(500)).max(MAX_SLIDE_LINES),
 });
@@ -27,7 +27,7 @@ export const SetlistSchema = z.object({
 });
 
 /** A structural change to a setlist, used to reindex the live `current`. */
-export type SetlistOp =
+type SetlistOp =
   | { type: "remove"; index: number }
   | { type: "move"; from: number; to: number };
 
