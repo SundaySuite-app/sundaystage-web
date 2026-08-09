@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSessionState } from "@/lib/client/useSessionState";
 import { usePresence } from "@/lib/client/usePresence";
+import { newViewerId } from "@/lib/viewerId";
 import { t, detectLocale, LOCALES, LOCALE_LABELS, type Locale } from "@/lib/locale/i18n";
 import type { WebFrame } from "@/lib/webframe";
 
@@ -47,7 +48,7 @@ function saveLang(v: Locale | "off"): void {
 
 export function FollowClient({ code }: { code: string }) {
   const { join, session, state, connected } = useSessionState(code);
-  const [viewerId] = useState(() => `f-${Math.random().toString(36).slice(2)}`);
+  const [viewerId] = useState(() => newViewerId("f"));
   usePresence(session?.id ?? null, { viewerId, role: "follow" });
 
   // The follower's chosen language. Restores a previous choice from this device,

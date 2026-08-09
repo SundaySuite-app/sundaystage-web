@@ -35,6 +35,7 @@ import { editTextToLines } from "@/lib/operator/edit";
 import { createCmdSeq } from "@/lib/operator/cmdSeq";
 import { createFrameSender } from "@/lib/operator/frameSender";
 import { usePresence } from "@/lib/client/usePresence";
+import { newViewerId } from "@/lib/viewerId";
 import { SlideRenderer } from "@/components/SlideRenderer";
 import { LibraryPicker } from "@/components/LibraryPicker";
 import { t } from "@/lib/locale/i18n";
@@ -59,7 +60,7 @@ export function OperatorClient({ id }: { id: string }) {
   // Clock-seeded, never a 0-based counter: the desktop drops any cmd_seq <= the
   // highest it has seen, so a phone reload used to silently kill the remote.
   const [nextCmdSeq] = useState(() => createCmdSeq());
-  const [viewerId] = useState(() => `o-${Math.random().toString(36).slice(2)}`);
+  const [viewerId] = useState(() => newViewerId("o"));
   const [editing, setEditing] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
   // Debounced mirror of editText, so the bottom-right preview reflects the draft
