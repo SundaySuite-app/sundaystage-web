@@ -25,7 +25,6 @@ export const SetlistSchema = z.object({
   slides: z.array(SlideDefSchema).max(500),
   current: z.number().int().min(-1),
 });
-export type StoredSetlist = z.infer<typeof SetlistSchema>;
 
 /** A structural change to a setlist, used to reindex the live `current`. */
 export type SetlistOp =
