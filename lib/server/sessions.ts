@@ -126,6 +126,27 @@ export async function setFrame(
   return { ok: true, seq: Number(data) };
 }
 
+type NextCmdSeqResult = { ok: true; seq: number } | { ok: false; reason: "not_found" | "closed" };
+
+/**
+ * Server-assigned remote-command sequence — the same atomic-RPC treatment the
+ * frame seq gets, because the desktop drops any cmd_seq <= the highest it has
+ * seen and no client-held counter survives a reload or a second operator
+ * device. The RPC floors the value at wall-clock ms so it stays above what the
+ * older clock-seeded operator build sent (see the 20260809120000 migration).
+ */
+export async function nextCmdSeq(id: string): Promise<NextCmdSeqResult> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.rpc("next_cmd_seq", { p_id: id });
+  if (error) {
+    const msg = error.message ?? "";
+    if (msg.includes("session_not_found")) return { ok: false, reason: "not_found" };
+    if (msg.includes("session_closed")) return { ok: false, reason: "closed" };
+    throw error;
+  }
+  return { ok: true, seq: Number(data) };
+}
+
 export async function saveSetlist(id: string, setlist: unknown): Promise<void> {
   const supabase = createServiceClient();
   const { error } = await supabase.from("session").update({ setlist }).eq("id", id);
