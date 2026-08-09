@@ -26,6 +26,7 @@ LIBMIG=supabase/migrations/20260615120000_library.sql
 RTMIG=supabase/migrations/20260621120000_realtime_authz.sql
 CMDMIG=supabase/migrations/20260714120000_commands_channel_authz.sql
 GRANTMIG=supabase/migrations/20260808120000_realtime_grants.sql
+SEQMIG=supabase/migrations/20260809120000_command_seq.sql
 echo "→ migration (1st apply)"
 run "$MIG"
 run "$TRMIG"
@@ -33,6 +34,7 @@ run "$LIBMIG"
 run "$RTMIG"
 run "$CMDMIG"
 run "$GRANTMIG"
+run "$SEQMIG"
 echo "→ migration (2nd apply — idempotency)"
 run "$MIG"
 run "$TRMIG"
@@ -40,6 +42,7 @@ run "$LIBMIG"
 run "$RTMIG"
 run "$CMDMIG"
 run "$GRANTMIG"
+run "$SEQMIG"
 
 echo "→ stage-logic assertions"
 docker cp supabase/tests/stage_logic_test.sql "$NAME:/tmp/t.sql" >/dev/null

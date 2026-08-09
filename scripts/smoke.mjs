@@ -95,13 +95,34 @@ const put = await api(`/api/sessions/${id}/setlist`, {
 });
 check("setlist saved", put.status === 200, `got ${put.status}`);
 
-// 8. Command broadcast endpoint
+// 8. Command broadcast endpoint. cmd_seq is SERVER-assigned (atomic RPC): the
+// client sends none, the response carries the assigned value, and it must land
+// above wall-clock ms — desktops in the field hold timestamp-scale high-water
+// marks from the old clock-seeded operator build and drop anything <= them.
 const cmd = await api(`/api/sessions/${id}/command`, {
+  method: "POST",
+  headers: auth,
+  body: JSON.stringify({ cmd: "next" }),
+});
+check("command accepted", cmd.status === 200, `got ${cmd.status}`);
+check(
+  "command response carries a server-assigned cmd_seq above timestamp scale",
+  Number.isSafeInteger(cmd.body?.cmd_seq) && cmd.body.cmd_seq > 1.7e12,
+  JSON.stringify(cmd.body),
+);
+// An operator build from before the switch still posts its own cmd_seq — it
+// must be ACCEPTED and ignored, never 400 (that would kill a live remote).
+const cmd2 = await api(`/api/sessions/${id}/command`, {
   method: "POST",
   headers: auth,
   body: JSON.stringify({ cmd: "next", cmd_seq: 1 }),
 });
-check("command accepted", cmd.status === 200, `got ${cmd.status}`);
+check("legacy client cmd_seq accepted and ignored", cmd2.status === 200, `got ${cmd2.status}`);
+check(
+  "two sequential commands get strictly increasing seqs",
+  cmd2.body?.cmd_seq > cmd.body?.cmd_seq,
+  `${cmd.body?.cmd_seq} → ${cmd2.body?.cmd_seq}`,
+);
 
 // 8b. Realtime RECEIVE over a PRIVATE channel: a real anon subscriber must still
 // get a server broadcast after the realtime.messages RLS change (a too-tight
@@ -164,7 +185,7 @@ if (RT_URL && RT_ANON) {
         await api(`/api/sessions/${id}/command`, {
           method: "POST",
           headers: auth,
-          body: JSON.stringify({ cmd: "next", cmd_seq: 2 }),
+          body: JSON.stringify({ cmd: "next" }),
         });
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         finish(false);
@@ -205,18 +226,25 @@ if (RT_URL && RT_ANON) {
   });
   check("commands channel subscribes (desktop receive path)", subscribed === true);
   if (subscribed) {
-    // Legit path: POST → server signs → broadcast.
-    await api(`/api/sessions/${id}/command`, {
+    // Legit path: POST → server assigns cmd_seq → signs → broadcast.
+    const signed = await api(`/api/sessions/${id}/command`, {
       method: "POST",
       headers: auth,
-      body: JSON.stringify({ cmd: "next", cmd_seq: 2 }),
+      body: JSON.stringify({ cmd: "next" }),
     });
     // Forged path: a client send straight onto the channel, no secret involved.
     await ch.send({ type: "broadcast", event: "command", payload: { cmd: "black", cmd_seq: 99 } });
     await new Promise((r) => setTimeout(r, 4000));
 
-    const legit = payloads.find((p) => p.cmd_seq === 2);
+    // The broadcast must carry the SAME seq the API returned — that is the seq
+    // the signature covers and the seq the desktop orders against.
+    const legit = payloads.find((p) => p.cmd_seq === signed.body?.cmd_seq);
     const forged = payloads.find((p) => p.cmd_seq === 99);
+    check(
+      "broadcast carries the server-assigned seq from the response",
+      Boolean(legit),
+      `expected cmd_seq ${signed.body?.cmd_seq} in ${JSON.stringify(payloads)}`,
+    );
     check("server command arrives with a signature", Boolean(legit?.sig), JSON.stringify(payloads));
     check("server command signature verifies", legit ? await verifySig(legit) : false);
     check(

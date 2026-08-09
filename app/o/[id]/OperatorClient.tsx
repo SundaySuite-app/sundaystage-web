@@ -32,8 +32,8 @@ import {
 import { WEBFRAME_VERSION, type WebFrame } from "@/lib/webframe";
 import { resolveHotkey } from "@/lib/operator/hotkeys";
 import { editTextToLines } from "@/lib/operator/edit";
-import { createCmdSeq } from "@/lib/operator/cmdSeq";
 import { createFrameSender } from "@/lib/operator/frameSender";
+import { createCommandSender } from "@/lib/operator/sendCommand";
 import { usePresence } from "@/lib/client/usePresence";
 import { newViewerId } from "@/lib/viewerId";
 import { SlideRenderer } from "@/components/SlideRenderer";
@@ -57,9 +57,6 @@ export function OperatorClient({ id }: { id: string }) {
   const [overlay, setOverlay] = useState<"none" | "black" | "logo">("none");
   const [paste, setPaste] = useState("");
   const [lost, setLost] = useState(false);
-  // Clock-seeded, never a 0-based counter: the desktop drops any cmd_seq <= the
-  // highest it has seen, so a phone reload used to silently kill the remote.
-  const [nextCmdSeq] = useState(() => createCmdSeq());
   const [viewerId] = useState(() => newViewerId("o"));
   const [editing, setEditing] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
@@ -187,15 +184,19 @@ export function OperatorClient({ id }: { id: string }) {
     [id],
   );
 
+  // Remote control for desktop-driven sessions. No sequence number rides along:
+  // the server assigns the authoritative cmd_seq (atomic RPC), which is the
+  // only counter that survives an operator reload or a second operator device.
+  const commandSender = useRef<((cmd: RemoteCommand) => Promise<void>) | null>(null);
   const sendCommand = useCallback(
     async (cmd: RemoteCommand) => {
-      await fetch(`/api/sessions/${id}/command`, {
-        method: "POST",
-        headers: auth,
-        body: JSON.stringify({ cmd, cmd_seq: nextCmdSeq() }),
+      commandSender.current ??= createCommandSender({
+        sessionId: id,
+        headers: () => authRef.current,
       });
+      await commandSender.current(cmd);
     },
-    [auth, id, nextCmdSeq],
+    [id],
   );
 
   // Briefly surface a confirmation message (e.g. after copying the PIN, or a

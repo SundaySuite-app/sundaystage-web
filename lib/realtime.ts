@@ -35,6 +35,11 @@ export type RemoteCommand = (typeof REMOTE_COMMANDS)[number];
  * base64url(HMAC-SHA256(session secret, `${sessionId}:${cmd}:${cmd_seq}`)) —
  * see lib/commandSig.ts. The desktop drops any command whose signature does
  * not verify, so a forged client broadcast on the channel is inert.
+ *
+ * `cmd_seq` is SERVER-assigned (stage.next_cmd_seq — see the 20260809120000
+ * migration). The only contracted property is that it STRICTLY INCREASES per
+ * session; consumers must not assume it starts at 1, is contiguous, or means
+ * anything as a count. Today it is floored at wall-clock ms.
  */
 export interface CommandPayload {
   cmd: RemoteCommand;
