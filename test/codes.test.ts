@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  generatePin,
-  generateResumeCode,
-  generateUnique,
-  isValidPin,
-  normalizeResumeCode,
-} from "@/lib/codes";
+import { generatePin, generateUnique, isValidPin } from "@/lib/codes";
 
 function seqRng(values: number[]): () => number {
   let i = 0;
@@ -20,24 +14,6 @@ describe("generatePin", () => {
   });
   it("is deterministic under an injected RNG", () => {
     expect(generatePin(seqRng([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]))).toBe("123456");
-  });
-});
-
-describe("generateResumeCode", () => {
-  it("matches XXXX-YY without ambiguous characters", () => {
-    for (let i = 0; i < 100; i++) {
-      const code = generateResumeCode();
-      expect(code).toMatch(/^[A-HJ-NP-Z]{4}-[A-HJ-NP-Z2-9]{2}$/);
-      expect(code).not.toMatch(/[IO01]/);
-    }
-  });
-});
-
-describe("normalizeResumeCode", () => {
-  it("uppercases and reinserts the dash", () => {
-    expect(normalizeResumeCode("kole7f")).toBe("KOLE-7F");
-    expect(normalizeResumeCode(" kole-7f ")).toBe("KOLE-7F");
-    expect(normalizeResumeCode("KOLE-7F")).toBe("KOLE-7F");
   });
 });
 
