@@ -10,7 +10,13 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { channels, events } from "@/lib/realtime";
-import { INITIAL_DISPLAY_STATE, applyEnvelope, applySnapshot, type DisplayState } from "@/lib/merge";
+import {
+  INITIAL_DISPLAY_STATE,
+  applyEnvelope,
+  applySnapshot,
+  joinBase,
+  type DisplayState,
+} from "@/lib/merge";
 import type { FrameEnvelope } from "@/lib/webframe";
 import { classifyJoinStatus, loadLastState, saveLastState } from "./lastframe";
 import { useChannel } from "./useChannel";
@@ -31,6 +37,14 @@ export function useSessionState(code: string) {
   const [session, setSession] = useState<JoinedSession | null>(null);
   const [state, setState] = useState<DisplayState>(INITIAL_DISPLAY_STATE);
   const mounted = useRef(true);
+  // Recycled-PIN guard, both directions of the rehydrate/join race:
+  //  - unvettedCache: session id of a rehydrated entry the join has not vetted
+  //    yet (`undefined` = nothing to vet). The first successful join clears it,
+  //    so a later join/retry can never discard state earned from broadcasts.
+  //  - joinedId: the session the code resolved to, once known. If the join wins
+  //    the race, the rehydrate vets itself against this instead.
+  const unvettedCache = useRef<string | null | undefined>(undefined);
+  const joinedId = useRef<string | null>(null);
 
   useEffect(() => {
     mounted.current = true;
@@ -40,14 +54,24 @@ export function useSessionState(code: string) {
   }, []);
 
   // 0. Rehydrate the last slide we saw for this code (survives a reload during
-  //    an outage). newer-wins means a fresher join/poll later still overrides it.
+  //    an outage). This is a PAINT HINT only: the entry never carries lifecycle
+  //    (always "live" on load) and the join below throws it away unless its
+  //    session id matches — a recycled PIN must not resurrect an old service.
   useEffect(() => {
     let cancelled = false;
+    unvettedCache.current = undefined;
+    joinedId.current = null;
     void (async () => {
       await Promise.resolve();
       if (cancelled) return;
       const cached = loadLastState(code, Date.now());
-      if (cached) setState((s) => applySnapshot(s, cached));
+      if (!cached) return;
+      if (joinedId.current === null) {
+        unvettedCache.current = cached.sessionId; // the join will vet it
+      } else if (cached.sessionId !== joinedId.current) {
+        return; // join got here first and this entry isn't its — drop it
+      }
+      setState((s) => applySnapshot(s, cached.state));
     })();
     return () => {
       cancelled = true;
@@ -73,8 +97,19 @@ export function useSessionState(code: string) {
         frame: FrameEnvelope["frame"] | null;
       };
       if (!mounted.current) return;
+      // The join is the only place that learns WHICH session this code resolves
+      // to right now, so it is the only place that can vet the rehydrated cache.
+      const cachedSessionId = unvettedCache.current;
+      unvettedCache.current = undefined;
+      joinedId.current = body.id;
       setSession({ id: body.id, title: body.title, origin: body.origin });
-      setState((s) => applySnapshot(s, { seq: body.seq, frame: body.frame, status: body.status }));
+      setState((s) =>
+        applySnapshot(joinBase(s, body.id, cachedSessionId), {
+          seq: body.seq,
+          frame: body.frame,
+          status: body.status,
+        }),
+      );
       setJoin("ok");
     } catch {
       if (mounted.current) setJoin("offline");
@@ -141,9 +176,12 @@ export function useSessionState(code: string) {
   }, [session, connected, refetch, state.status]);
 
   // 4. Persist the last real slide so a reload during an outage rehydrates it.
+  //    Stamped with the session id — without it a later service reusing this
+  //    PIN would inherit the entry (and its higher seq) and never repaint.
   useEffect(() => {
-    if (state.seq > 0) saveLastState(code, state, Date.now());
-  }, [code, state]);
+    const id = session?.id;
+    if (id && state.seq > 0) saveLastState(code, id, state, Date.now());
+  }, [code, session?.id, state]);
 
   return { join, session, state, connected };
 }
