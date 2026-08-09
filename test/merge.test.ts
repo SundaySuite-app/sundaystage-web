@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INITIAL_DISPLAY_STATE, applyEnvelope, applySnapshot } from "@/lib/merge";
+import { INITIAL_DISPLAY_STATE, applyEnvelope, applySnapshot, joinBase } from "@/lib/merge";
 import type { WebFrame } from "@/lib/webframe";
 
 const frame = (n: number): WebFrame => ({ v: 1, kind: "message", message: `frame ${n}` });
@@ -42,5 +42,31 @@ describe("applySnapshot (polling through the same rule)", () => {
     let s = applySnapshot(INITIAL_DISPLAY_STATE, { seq: 1, frame: frame(1), status: "ended" });
     s = applySnapshot(s, { seq: 0, frame: null, status: "live" });
     expect(s.status).toBe("ended");
+  });
+});
+
+describe("joinBase (recycled-PIN guard)", () => {
+  const advanced = applySnapshot(INITIAL_DISPLAY_STATE, {
+    seq: 50,
+    frame: frame(50),
+    status: "live",
+  });
+
+  it("keeps the state when the cache belongs to the joined session", () => {
+    expect(joinBase(advanced, "sess-a", "sess-a")).toBe(advanced);
+  });
+
+  it("keeps the state when nothing was rehydrated (or it was already vetted)", () => {
+    expect(joinBase(advanced, "sess-a")).toBe(advanced);
+    expect(joinBase(advanced, "sess-a", undefined)).toBe(advanced);
+  });
+
+  it("discards a cache from another session — seq AND lifecycle", () => {
+    const ended = applySnapshot(advanced, { seq: 50, frame: frame(50), status: "ended" });
+    expect(joinBase(ended, "sess-b", "sess-a")).toEqual(INITIAL_DISPLAY_STATE);
+  });
+
+  it("discards a legacy cache that cannot prove which session it came from", () => {
+    expect(joinBase(advanced, "sess-a", null)).toEqual(INITIAL_DISPLAY_STATE);
   });
 });

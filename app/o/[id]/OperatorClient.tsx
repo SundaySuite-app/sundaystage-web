@@ -32,6 +32,7 @@ import {
 import { WEBFRAME_VERSION, type WebFrame } from "@/lib/webframe";
 import { resolveHotkey } from "@/lib/operator/hotkeys";
 import { editTextToLines } from "@/lib/operator/edit";
+import { createCmdSeq } from "@/lib/operator/cmdSeq";
 import { usePresence } from "@/lib/client/usePresence";
 import { SlideRenderer } from "@/components/SlideRenderer";
 import { LibraryPicker } from "@/components/LibraryPicker";
@@ -54,7 +55,9 @@ export function OperatorClient({ id }: { id: string }) {
   const [overlay, setOverlay] = useState<"none" | "black" | "logo">("none");
   const [paste, setPaste] = useState("");
   const [lost, setLost] = useState(false);
-  const [cmdSeq, setCmdSeq] = useState(0);
+  // Clock-seeded, never a 0-based counter: the desktop drops any cmd_seq <= the
+  // highest it has seen, so a phone reload used to silently kill the remote.
+  const [nextCmdSeq] = useState(() => createCmdSeq());
   const [viewerId] = useState(() => `o-${Math.random().toString(36).slice(2)}`);
   const [editing, setEditing] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
@@ -173,15 +176,13 @@ export function OperatorClient({ id }: { id: string }) {
 
   const sendCommand = useCallback(
     async (cmd: RemoteCommand) => {
-      const next = cmdSeq + 1;
-      setCmdSeq(next);
       await fetch(`/api/sessions/${id}/command`, {
         method: "POST",
         headers: auth,
-        body: JSON.stringify({ cmd, cmd_seq: next }),
+        body: JSON.stringify({ cmd, cmd_seq: nextCmdSeq() }),
       });
     },
-    [auth, cmdSeq, id],
+    [auth, id, nextCmdSeq],
   );
 
   // Briefly surface a confirmation message (e.g. after copying the PIN, or a
