@@ -25,8 +25,13 @@ owns *reach*: any browser becomes a display.
   with supabase-js (lib/client/useChannel.ts). 300–600 ms typical end-to-end.
 - **Server-assigned `seq`** via an atomic RPC; broadcast AND polling flow
   through the same newer-wins reducer (lib/merge.ts) so stale never overwrites
-  fresh. Polling (15 s healthy / 3 s while disconnected) is the safety net —
-  broadcast failures are swallowed by design.
+  fresh. Polling (15 s healthy / 3 s while disconnected, backing off to 60 s on
+  a run of failed polls — lib/client/backoff.ts) is the safety net — broadcast
+  failures are swallowed by design.
+- **Leader-tab election** (lib/client/leader.ts): one tab per join code holds
+  the Supabase subscription + polling and relays frames to the other tabs over
+  BroadcastChannel, so N tabs of one display machine cost one connection, not N.
+  No BroadcastChannel → every tab is its own leader. Display read path only.
 - **One write path**: desktop forwarder and web operator both POST
   `/api/sessions/[id]/frame` with the session's bearer secret. The secret is
   returned exactly once, at session creation.
