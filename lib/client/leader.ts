@@ -25,6 +25,12 @@
  *
  * This module is transport- and clock-agnostic (inject `post`/`now`, drive with
  * `tick()`) so the election is unit-testable in the node env with a fake bus.
+ *
+ * The relayed payload is a type parameter, because the election is worth
+ * exactly as much to any other per-tab connection to the same session. The
+ * display loop relays merged frames (`RelayPayload`, the default); presence
+ * relays the viewer roster (lib/client/presence.ts). Same rule, same handover,
+ * one implementation.
  */
 import type { DisplayState } from "@/lib/merge";
 
@@ -35,26 +41,26 @@ export interface RelayPayload {
 }
 
 /** Messages exchanged over the BroadcastChannel. Kept tiny — local IPC. */
-export type LeaderMessage =
+export type LeaderMessage<P = RelayPayload> =
   /** Liveness. Every tab beats on each tick. */
   | { t: "beat"; id: string }
   /** Graceful departure (tab close) — lets peers re-elect without waiting out
    *  the timeout. Best-effort: a crash relies on the timeout instead. */
   | { t: "bye"; id: string }
-  /** The leader relaying the current frame to followers. */
-  | { t: "frame"; id: string; payload: RelayPayload };
+  /** The leader relaying the current payload to followers. */
+  | { t: "frame"; id: string; payload: P };
 
-export interface CoordinatorOptions {
+export interface CoordinatorOptions<P = RelayPayload> {
   /** This tab's id. Must be unique per tab and give a stable total order. */
   selfId: string;
   now: () => number;
-  post: (msg: LeaderMessage) => void;
+  post: (msg: LeaderMessage<P>) => void;
   /** Called when this tab becomes (true) or stops being (false) the leader. */
   onLeadershipChange?: (isLeader: boolean) => void;
-  /** Follower side: a relayed frame arrived. */
-  onRelay?: (payload: RelayPayload) => void;
+  /** Follower side: a relayed payload arrived. */
+  onRelay?: (payload: P) => void;
   /** Leader side: produce the current payload to catch a newly-seen tab up. */
-  onNeedState?: () => RelayPayload | null;
+  onNeedState?: () => P | null;
   /** Interval a live peer may miss beats before it is presumed dead. */
   peerTimeoutMs?: number;
 }
@@ -68,13 +74,22 @@ export function hasBroadcastChannel(): boolean {
   return typeof BroadcastChannel !== "undefined";
 }
 
-export class LeaderCoordinator {
+/** A tab id: unique per tab, and lexicographically ordered so every tab in the
+ *  group derives the same leader from the same peer set. */
+export function newTabId(): string {
+  const c = typeof crypto !== "undefined" ? crypto : undefined;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  // Fixed-width fallback so ids keep a stable lexicographic total order.
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2).padEnd(12, "0")}`;
+}
+
+export class LeaderCoordinator<P = RelayPayload> {
   private readonly selfId: string;
   private readonly now: () => number;
-  private readonly post: (msg: LeaderMessage) => void;
+  private readonly post: (msg: LeaderMessage<P>) => void;
   private readonly onLeadershipChange?: (isLeader: boolean) => void;
-  private readonly onRelay?: (payload: RelayPayload) => void;
-  private readonly onNeedState?: () => RelayPayload | null;
+  private readonly onRelay?: (payload: P) => void;
+  private readonly onNeedState?: () => P | null;
   private readonly peerTimeoutMs: number;
 
   /** id → last time (our clock) we heard a beat from it. Self is always live. */
@@ -83,7 +98,7 @@ export class LeaderCoordinator {
   private leaderIdValue: string | null = null;
   private stopped = false;
 
-  constructor(opts: CoordinatorOptions) {
+  constructor(opts: CoordinatorOptions<P>) {
     this.selfId = opts.selfId;
     this.now = opts.now;
     this.post = opts.post;
@@ -115,7 +130,7 @@ export class LeaderCoordinator {
     this.recompute();
   }
 
-  receive(msg: LeaderMessage): void {
+  receive(msg: LeaderMessage<P>): void {
     if (this.stopped || msg.id === this.selfId) return;
     switch (msg.t) {
       case "beat": {
@@ -140,7 +155,7 @@ export class LeaderCoordinator {
   }
 
   /** Leader side: broadcast the current payload to followers (no-op if not). */
-  relay(payload: RelayPayload): void {
+  relay(payload: P): void {
     if (this.stopped || !this.leader) return;
     this.post({ t: "frame", id: this.selfId, payload });
   }

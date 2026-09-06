@@ -19,16 +19,10 @@ import {
   HEARTBEAT_MS,
   LeaderCoordinator,
   hasBroadcastChannel,
+  newTabId,
   type LeaderMessage,
   type RelayPayload,
 } from "./leader";
-
-function newTabId(): string {
-  const c = typeof crypto !== "undefined" ? crypto : undefined;
-  if (c && typeof c.randomUUID === "function") return c.randomUUID();
-  // Fixed-width fallback so ids keep a stable lexicographic total order.
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2).padEnd(12, "0")}`;
-}
 
 export function useLeader(
   code: string | null,

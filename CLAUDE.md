@@ -31,7 +31,12 @@ owns *reach*: any browser becomes a display.
 - **Leader-tab election** (lib/client/leader.ts): one tab per join code holds
   the Supabase subscription + polling and relays frames to the other tabs over
   BroadcastChannel, so N tabs of one display machine cost one connection, not N.
-  No BroadcastChannel → every tab is its own leader. Display read path only.
+  No BroadcastChannel → every tab is its own leader. Read paths only — never
+  the operator write. **Presence rides the same election**
+  (lib/client/presence.ts), grouped per (session, role): the leader holds the
+  presence connection and relays the roster, so same-machine duplicates of one
+  role count once. Different roles keep their own connection, or the operator's
+  counts would lose information rather than connections.
 - **One write path**: desktop forwarder and web operator both POST
   `/api/sessions/[id]/frame` with the session's bearer secret. The secret is
   returned exactly once, at session creation.
