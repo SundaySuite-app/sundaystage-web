@@ -118,11 +118,6 @@ export class PresenceController {
     return this.coord.isLeader;
   }
 
-  /** The id this tab currently believes leads (its own when it leads). */
-  get leaderId(): string | null {
-    return this.coord.leaderId;
-  }
-
   /** Announce presence and settle the initial election (solo tab → leader,
    *  which opens the connection synchronously). */
   start(): void {
