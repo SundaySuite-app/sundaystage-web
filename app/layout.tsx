@@ -4,7 +4,7 @@ import "./globals.css";
 import { ServiceWorkerRegister } from "./sw-register";
 import { LangSync } from "./lang-sync";
 
-// Sunday Suite brand fonts — Playfair Display (display/wordmark) + Hanken
+// SundaySuite brand fonts — Playfair Display (display/wordmark) + Hanken
 // Grotesk (body), shared across the suite.
 const display = Playfair_Display({
   subsets: ["latin"],
