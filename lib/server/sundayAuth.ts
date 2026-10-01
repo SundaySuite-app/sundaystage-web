@@ -27,7 +27,6 @@ import {
   createRemoteJWKSet,
   type JWTPayload,
   type JWTVerifyGetKey,
-  type KeyLike,
 } from "jose";
 
 export interface SundayClaims {
@@ -58,7 +57,9 @@ export function asGrantMap(v: unknown): Record<string, string[]> {
 }
 
 export interface VerifierOptions {
-  keys: JWTVerifyGetKey | KeyLike | Uint8Array;
+  /** A remote/local JWKS getter, or a single WebCrypto key (jose 6 dropped
+   *  its `KeyLike` alias — on Workers a key is a `CryptoKey`). */
+  keys: JWTVerifyGetKey | CryptoKey | Uint8Array;
   /** Expected audience (`aud`). Required — an unscoped token is rejected. */
   audience: string;
   /** Expected issuer (`iss`), when pinned. */
