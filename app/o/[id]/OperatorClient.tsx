@@ -38,6 +38,7 @@ import { usePresence } from "@/lib/client/usePresence";
 import { newViewerId } from "@/lib/viewerId";
 import { SlideRenderer } from "@/components/SlideRenderer";
 import { LibraryPicker } from "@/components/LibraryPicker";
+import { StorskjermButton } from "@/lib/client/storskjerm/StorskjermButton";
 import { t } from "@/lib/locale/i18n";
 import type { RemoteCommand } from "@/lib/realtime";
 import type { LibrarySong } from "@/lib/client/useLibrary";
@@ -493,6 +494,7 @@ export function OperatorClient({ id }: { id: string }) {
             >
               {t("op.qr")}
             </button>
+            <StorskjermButton url={stored?.code ? `https://${host}/d/${stored.code}` : null} />
           </div>
         </div>
         <div className="op-meta">

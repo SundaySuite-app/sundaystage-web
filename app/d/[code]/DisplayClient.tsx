@@ -10,6 +10,7 @@ import { useSessionState } from "@/lib/client/useSessionState";
 import { usePresence } from "@/lib/client/usePresence";
 import { newViewerId } from "@/lib/viewerId";
 import { SlideRenderer } from "@/components/SlideRenderer";
+import { useFullscreenKey } from "@/lib/client/storskjerm/useFullscreenKey";
 import { t } from "@/lib/locale/i18n";
 
 export function DisplayClient({ code }: { code: string }) {
@@ -17,6 +18,9 @@ export function DisplayClient({ code }: { code: string }) {
   const [cursorVisible, setCursorVisible] = useState(true);
   const [viewerId] = useState(() => newViewerId("d"));
   usePresence(session?.id ?? null, { viewerId, role: "display" });
+
+  // F toggles fullscreen (projector/TV without a mouse nearby).
+  useFullscreenKey();
 
   // Keep the projector awake for the whole service.
   useEffect(() => {
