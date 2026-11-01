@@ -1,0 +1,96 @@
+/* Storskjerm: veiviser + skjermatferd. Bruker appens tokens
+ * (--ink-300, --ink-900, --danger) så mappa kan kopieres. */
+
+.storskjerm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.6);
+}
+.storskjerm-panel {
+  background: var(--ink-900);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 1.4rem;
+  display: grid;
+  gap: 12px;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.storskjerm-panel h3 {
+  margin: 0;
+}
+.storskjerm-hjelp {
+  margin: 0;
+  color: var(--ink-300);
+  font-size: 0.9rem;
+}
+.storskjerm-url {
+  display: grid;
+  gap: 6px;
+}
+.storskjerm-url-rad {
+  display: flex;
+  gap: 8px;
+}
+.storskjerm-url-rad input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.storskjerm-kort {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+.storskjerm-kort h4 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.storskjerm-kort p,
+.storskjerm-kort ol {
+  margin: 0;
+}
+.storskjerm-kort ol {
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+}
+.storskjerm-kort .btn {
+  justify-self: start;
+}
+.storskjerm-anbefalt {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+.storskjerm-merke {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.storskjerm-melding-ok {
+  font-weight: 600;
+}
+.storskjerm-melding-feil {
+  font-weight: 600;
+  color: var(--danger, #e5484d);
+  margin: 0;
+}
+
