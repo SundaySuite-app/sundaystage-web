@@ -7,21 +7,30 @@
  * updated to match. That closes the drift that once let the desktop send
  * frames the server 400-rejected wholesale (silently freezing displays).
  *
- * Regenerate with:
- *   import { zodToJsonSchema } from "zod-to-json-schema";
- *   zodToJsonSchema(WebFrame, { name: "WebFrame", target: "jsonSchema7" })
+ * The checked-in file keeps the legacy `zod-to-json-schema` envelope
+ * (`$ref` + `definitions.WebFrame`) because the desktop repo vendors it
+ * byte-for-byte. Zod 4 ships its own generator, so this test compares the
+ * native `z.toJSONSchema` output against the unwrapped definition. Regenerate
+ * the body with:
+ *   z.toJSONSchema(WebFrame, { target: "draft-7", io: "output" })
+ * and re-wrap it as `{ $ref: "#/definitions/WebFrame", definitions: { WebFrame: <body without $schema> }, $schema }`.
  */
 import { describe, expect, it } from "vitest";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import { WebFrame } from "@/lib/webframe";
 import checkedIn from "@/lib/webframe.schema.json";
 
 describe("webframe.schema.json", () => {
   it("matches the schema generated from the live zod WebFrame", () => {
-    const generated = zodToJsonSchema(WebFrame, {
-      name: "WebFrame",
-      target: "jsonSchema7",
-    });
-    expect(JSON.parse(JSON.stringify(generated))).toEqual(checkedIn);
+    const { $schema, ...body } = z.toJSONSchema(WebFrame, {
+      target: "draft-7",
+      io: "output",
+    }) as Record<string, unknown>;
+    const wrapped = {
+      $ref: "#/definitions/WebFrame",
+      definitions: { WebFrame: body },
+      $schema,
+    };
+    expect(JSON.parse(JSON.stringify(wrapped))).toEqual(checkedIn);
   });
 });
