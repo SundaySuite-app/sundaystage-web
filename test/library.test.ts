@@ -44,3 +44,17 @@ describe("PublishSong", () => {
     expect(PublishSong.safeParse({ ...song, source_updated_at: -1 }).success).toBe(false);
   });
 });
+
+describe("PublishBody church_id (zod 4 parity)", () => {
+  it("keeps the v3 UUID leniency (any 8-4-4-4-12 hex, as Postgres uuid accepts)", () => {
+    expect(
+      PublishBody.safeParse({ church_id: "11111111-2222-3333-4444-555555555555", songs: [] }).success,
+    ).toBe(true);
+  });
+  it("still defaults language to 'no'", () => {
+    const { source_updated_at, source_song_id, title, sections } = song;
+    expect(
+      PublishSong.parse({ source_song_id, title, sections, source_updated_at }).language,
+    ).toBe("no");
+  });
+});

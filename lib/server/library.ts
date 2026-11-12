@@ -32,7 +32,7 @@ export type PublishSong = z.infer<typeof PublishSong>;
 
 /** The publish request body. `church_id` is validated against token claims. */
 export const PublishBody = z.object({
-  church_id: z.string().uuid(),
+  church_id: z.guid(),
   songs: z.array(PublishSong).max(2000),
   deleted: z.array(z.string().min(1).max(64)).max(2000).optional(),
 });
