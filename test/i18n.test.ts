@@ -54,3 +54,20 @@ describe("splitAccent", () => {
     }
   });
 });
+
+describe("detectLocale on the server", () => {
+  it("returns the default even when the runtime has navigator.language (Cloudflare Workers)", async () => {
+    const { detectLocale } = await import("@/lib/locale/i18n");
+    const g = globalThis as { navigator?: unknown; window?: unknown };
+    const hadNavigator = "navigator" in g;
+    const saved = Object.getOwnPropertyDescriptor(g, "navigator");
+    Object.defineProperty(g, "navigator", { value: { language: "en-US" }, configurable: true });
+    try {
+      expect(typeof g.window).toBe("undefined");
+      expect(detectLocale()).toBe("no");
+    } finally {
+      if (hadNavigator && saved) Object.defineProperty(g, "navigator", saved);
+      else delete g.navigator;
+    }
+  });
+});
