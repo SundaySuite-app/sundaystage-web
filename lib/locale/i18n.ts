@@ -596,7 +596,11 @@ export const LOCALE_LABELS: Record<Locale, string> = {
 };
 
 export function detectLocale(): Locale {
-  if (typeof navigator === "undefined") return "no";
+  // Check `window`, not `navigator`: Cloudflare Workers expose `navigator.language`
+  // (= "en") since compatibility_date 2025-05-19 (`enable_navigator_language`), so a
+  // navigator check made the server render English and the browser Norwegian —
+  // a hydration mismatch (React #418). The server must always render the default.
+  if (typeof window === "undefined" || typeof navigator === "undefined") return "no";
   const primary = (navigator.language ?? "no").toLowerCase().split("-")[0];
   const mapped = primary === "nb" || primary === "nn" ? "no" : primary;
   return (LOCALES as readonly string[]).includes(mapped) ? (mapped as Locale) : "no";
